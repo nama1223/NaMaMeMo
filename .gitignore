@@ -5,3 +5,6 @@ dist
 *.local
 .claude/
 supabase/.temp/
+
+# 内部メモは公開リポジトリに含めない
+HANDOFF.md
