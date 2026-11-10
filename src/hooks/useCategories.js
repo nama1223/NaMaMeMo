@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { cacheCategories, getCachedCategories } from '../utils/offlineDB'
-import { withTimeout } from '../utils/withTimeout'
 
 export function useCategories(userId) {
   const [categories, setCategories] = useState([])
@@ -14,23 +13,11 @@ export function useCategories(userId) {
     if (!userId) return
     setFetchError(false)
     setLoading(true)
-    // 通信が宙吊りになると await が返らず読み込みが終わらないため 8 秒で見切る。
-    // タイムアウト・例外は error と同じ経路に入れてキャッシュ復元を必ず試みる
-    let data, error
-    try {
-      ;({ data, error } = await withTimeout(
-        supabase
-          .from('categories')
-          .select('*')
-          .eq('user_id', userId)
-          .order('position', { ascending: true }),
-        8000,
-        'categories fetch timeout'
-      ))
-    } catch (e) {
-      data = null
-      error = e
-    }
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('user_id', userId)
+      .order('position', { ascending: true })
 
     if (error) {
       // キャッシュから復元を試みる

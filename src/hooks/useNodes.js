@@ -5,7 +5,6 @@ import {
   markNodeDirty, markNodeDeleted,
   getPendingSync, clearPendingSync,
 } from '../utils/offlineDB'
-import { withTimeout } from '../utils/withTimeout'
 
 // ごみ箱ノードの特別ID（ユーザーごとにDBに保存される特殊ノード）
 export const TRASH_NODE_TITLE = '🗑 ごみ箱'
@@ -44,22 +43,10 @@ export function useNodes(userId, categoryId) {
 
   const fetchNodes = useCallback(async () => {
     if (!userId || !categoryId) { setNodes([]); setLoading(false); return }
-    // 通信が宙吊りになると await が返らず読み込みが終わらないため 8 秒で見切る。
-    // タイムアウト・例外は error と同じ経路に入れてキャッシュ復元を必ず試みる
-    let data, error
-    try {
-      ;({ data, error } = await withTimeout(
-        supabase
-          .from('nodes').select('*')
-          .eq('user_id', userId).eq('category_id', categoryId)
-          .order('position', { ascending: true }),
-        8000,
-        'nodes fetch timeout'
-      ))
-    } catch (e) {
-      data = null
-      error = e
-    }
+    const { data, error } = await supabase
+      .from('nodes').select('*')
+      .eq('user_id', userId).eq('category_id', categoryId)
+      .order('position', { ascending: true })
     if (!error) {
       const ns = data || []
       setNodes(ns)

@@ -1,13 +1,6 @@
-export const VERSION = '1.03'
+export const VERSION = '1.02'
 
 export const CHANGELOG = [
-  {
-    version: '1.03',
-    date: '2026-11-10',
-    items: [
-      '起動：電波の弱い場所で通信が宙吊りになるとメモが表示されなかった問題を修正（認証・カテゴリ・メモ取得にタイムアウトを追加し、端末内キャッシュで表示を続行するよう改善）',
-    ],
-  },
   {
     version: '1.02',
     date: '2026-05-14',

@@ -17,7 +17,6 @@ import { useCategories } from './hooks/useCategories'
 import PublicViewer from './components/PublicViewer';
 import ShareModal from './components/ShareModal';
 import { clearDriveTokenCache } from './utils/driveToken'
-import { withTimeout } from './utils/withTimeout'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 
 function buildThemeVars(themeKey) {
@@ -315,37 +314,14 @@ export default function App() {
   }, [activeTheme])
 
   useEffect(() => {
-    // 起動時セッション確認。トークン期限切れ時は裏で更新通信が走るが、
-    // 電波の弱い場所ではその通信が宙吊りになり getSession が返らないことがある。
-    // 5秒で見切って、端末内に保存済みのセッションがあればそれで起動を続行する
-    // （メモ表示は端末内キャッシュでまかない、認証の追いつきは onAuthStateChange に任せる）。
-    let sessionApplied = false
-    const applySession = (s) => {
-      if (sessionApplied) return
-      sessionApplied = true
-      setSession(s)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
       setLoading(false)
       // メタデータのニックネームをローカル設定に同期（他端末で変更した場合を考慮）
-      if (s?.user?.user_metadata?.nickname) {
-        updateSettings({ nickname: s.user.user_metadata.nickname })
+      if (session?.user?.user_metadata?.nickname) {
+        updateSettings({ nickname: session.user.user_metadata.nickname })
       }
-    }
-    const readStoredSession = () => {
-      try {
-        const ref = new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split('.')[0]
-        const raw = localStorage.getItem(`sb-${ref}-auth-token`)
-        if (!raw) return null
-        const parsed = JSON.parse(raw)
-        const s = parsed?.currentSession ?? parsed?.session ?? parsed
-        return s?.access_token && s?.user ? s : null
-      } catch { return null }
-    }
-    withTimeout(supabase.auth.getSession(), 5000, 'getSession timeout')
-      .then(({ data: { session } }) => applySession(session))
-      .catch(() => {
-        console.warn('[Auth] getSession timeout/error – using stored session')
-        applySession(readStoredSession())
-      })
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session && _event === 'SIGNED_IN') {
         // Supabase のロックを保持したままコールバック内で非同期処理すると
