@@ -1,0 +1,183 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Tiptapエディタ全体 ── */
+.tiptap {
+  height: 100%;
+  font-size: 15px;
+  line-height: 1.0;
+  color: var(--text);
+}
+
+.tiptap h1 { font-size: 1.8em; font-weight: 700; margin: 0.6em 0 0.2em; }
+.tiptap h2 { font-size: 1.4em; font-weight: 700; margin: 0.6em 0 0.2em; }
+.tiptap h3 { font-size: 1.15em; font-weight: 700; margin: 0.6em 0 0.2em; }
+.tiptap p { margin: 0.2em 0; }
+.tiptap ul, .tiptap ol { padding-left: 1.0em; margin: 0.2em 0; }
+.tiptap blockquote { border-left: 3px solid var(--accent); padding-left: 1em; margin: 0.4em 0; color: var(--text-muted); }
+.tiptap pre { background: #1e1e1e; color: #d4d4d4; padding: 10px 14px; border-radius: 8px; overflow-x: auto; font-size: 13px; margin: 0.4em 0; }
+.tiptap code { background: rgba(0,0,0,0.07); padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
+.tiptap img { max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 6px; cursor: zoom-in; display: block; margin: 6px 0; }
+.tiptap.ProseMirror-focused { outline: none; }
+
+/* ── チェックボックスリスト ──
+   フォントサイズ連動の核心：
+   - inputのfont-sizeは継承されないブラウザが多い
+   - そのため、label要素のfont-sizeを明示的に継承し、
+     inputはem単位でそのfont-sizeを基準にする
+   - appearance:none + ::before擬似要素でカスタム描画
+*/
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+/* liは1行1チェックボックス */
+.tiptap ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin: 0.25em 0;
+  /* font-sizeは親から継承 */
+}
+
+/* labelにfont-sizeを明示的に継承させる */
+.tiptap ul[data-type="taskList"] > li > label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  font-size: inherit;  /* ★ 明示的に継承 */
+  line-height: 1;
+}
+
+.tiptap ul[data-type="taskList"] > li > div {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+/* ★ inputのfont-sizeを強制的に継承させる */
+.tiptap ul[data-type="taskList"] > li > label > input[type="checkbox"] {
+  font-size: inherit !important; /* ★★★ これが重要 */
+  /* em単位で指定 → font-sizeに完全連動 */
+  width: 1.1em;
+  height: 1.1em;
+  min-width: 12px;
+  min-height: 12px;
+  /* ブラウザデフォルトUIを消す */
+  appearance: none;
+  -webkit-appearance: none;
+  /* カスタムデザイン */
+  border: 1.5px solid var(--text-muted, #8e8e93);
+  border-radius: 0.18em;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+  position: relative;
+  vertical-align: middle;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+/* チェックマーク */
+.tiptap ul[data-type="taskList"] > li > label > input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* em単位でチェックマークサイズも連動 */
+  width: 0.3em;
+  height: 0.55em;
+  border: 0.13em solid transparent;
+  border-top: none;
+  border-left: none;
+  transform: translate(-50%, -60%) rotate(45deg);
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+/* チェック済み */
+.tiptap ul[data-type="taskList"] > li > label > input[type="checkbox"]:checked {
+  background: var(--accent, #5b6af0);
+  border-color: var(--accent, #5b6af0);
+}
+.tiptap ul[data-type="taskList"] > li > label > input[type="checkbox"]:checked::after {
+  border-color: white;
+  opacity: 1;
+}
+
+/* チェック済みテキスト */
+.tiptap ul[data-type="taskList"] > li[data-checked="true"] > div {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+/* ── Details（折りたたみブロック） ── */
+.tiptap details {
+  border: 1px solid var(--border, #e5e5e7);
+  border-radius: 6px;
+  padding: 2px 10px 6px;
+  margin: 4px 0;
+  background: var(--surface, #f7f7f8);
+}
+
+/* summaryはNodeViewのcontentDOMの先頭に来るdetailsSummaryノード */
+/* TiptapのdetailsSummaryはdivとしてレンダリングされる */
+/* detailsの直接の子であるsummary要素に矢印を付ける */
+.tiptap details > summary,
+.tiptap details > div > summary {
+  display: none; /* NodeViewなのでsummaryはDOM上に直接は来ない */
+}
+
+/* NodeViewのcontentDOMの中身を制御 */
+/* detailsの子divの最初の要素（detailsSummary）をsummary風に見せる */
+.tiptap details > div {
+  /* contentDOMのラッパー */
+}
+
+/* detailsSummaryはparagraphとして描画されるため特別スタイルを当てる */
+/* TiptapはdetailsSummaryをsummary要素でrenderHTMLするため */
+.tiptap details summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  padding: 5px 0;
+  outline: none;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tiptap details summary::-webkit-details-marker { display: none; }
+.tiptap details summary::before {
+  content: '▶';
+  font-size: 10px;
+  color: var(--text-muted, #8e8e93);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.tiptap details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+/* ── ごみ箱ノードのスタイル ── */
+.trash-node-title {
+  opacity: 0.6;
+  font-style: italic;
+}
