@@ -2247,6 +2247,74 @@ if (!isSwitch && editor.isFocused) {
     ),
   }
 
+  // ── 機能一覧セレクトからツールバー機能を実行する ──
+  const runToolbarAction = (id) => {
+    if (!editor) return
+    switch (id) {
+      case 'fontSize': {
+        if (document.querySelector('[data-font-size-label="1"]')) openFontSizeInput()
+        else changeFontSize(1)
+        break
+      }
+      case 'undo': withScrollLock(editorAreaRef.current, () => editor.chain().focus().undo().run()); break
+      case 'redo': withScrollLock(editorAreaRef.current, () => editor.chain().focus().redo().run()); break
+      case 'heading1': case 'heading2': case 'heading3': case 'heading4': {
+        const level = Number(id.slice(-1))
+        sl(() => editor.chain().focus().toggleHeading({ level }).run())()
+        break
+      }
+      case 'bold': sl(() => editor.chain().focus().toggleBold().run())(); break
+      case 'italic': sl(() => editor.chain().focus().toggleItalic().run())(); break
+      case 'underline': sl(() => editor.chain().focus().toggleUnderline().run())(); break
+      case 'strike': sl(() => editor.chain().focus().toggleStrike().run())(); break
+      case 'color': setOpenPopover(p => p === 'color' ? null : 'color'); break
+      case 'highlight': setOpenPopover(p => p === 'highlight' ? null : 'highlight'); break
+      case 'align': setOpenPopover(p => p === 'align' ? null : 'align'); break
+      case 'font': setOpenPopover(p => p === 'font' ? null : 'font'); break
+      case 'bulletList': sl(() => editor.chain().focus().toggleBulletList().run())(); break
+      case 'orderedList': sl(() => editor.chain().focus().toggleOrderedList().run())(); break
+      case 'taskList': sl(() => editor.chain().focus().toggleTaskList().run())(); break
+      case 'blockquote': sl(() => editor.chain().focus().toggleBlockquote().run())(); break
+      case 'codeBlock': toggleCodeBlockSmart(); break
+      case 'details': insertDetails(); break
+      case 'image': handleFileSelect(); break
+      case 'share': setOpenPopover(p => p === 'share' ? null : 'share'); break
+      case 'home': if (node) setHomeShortcutModal(true); break
+      case 'reminder': if (node) onOpenReminder?.(node); break
+      case 'export': setExportModal(true); break
+      case 'import': {
+        const inp = document.createElement('input')
+        inp.type = 'file'; inp.accept = '.nmmm1,.nmmmg,.nmmmf'
+        inp.onchange = async (e) => {
+          const file = e.target.files?.[0]; if (!file) return
+          setImporting(true)
+          try { await onImportFile?.(file) } finally { setImporting(false) }
+        }
+        inp.click()
+        break
+      }
+      case 'link': {
+        const isActive = editor.isActive('link')
+        setLinkInput(isActive ? (editor.getAttributes('link').href || '') : '')
+        setOpenPopover(p => p === 'link' ? null : 'link')
+        break
+      }
+      case 'table': setOpenPopover(p => p === 'table' ? null : 'table'); break
+      case 'youtube': setLinkInput(''); setOpenPopover(p => p === 'youtube' ? null : 'youtube'); break
+      case 'childrenSummary': {
+        if (!node || isTrash) break
+        editor.chain().focus().insertContent({ type: 'childrenSummaryBlock', attrs: { label: `📋 子孫まとめ（${node.title}）` } }).run()
+        break
+      }
+      case 'tableOfContents': {
+        if (!node || isTrash) break
+        editor.chain().focus().insertContent({ type: 'tableOfContentsBlock' }).run()
+        break
+      }
+      default: break
+    }
+  }
+
   const GROUP_IDS = new Set(['bold','italic','underline','strike','bulletList','orderedList','taskList','blockquote','codeBlock','details','image'])
   const toolbarElements = []
   let groupBuffer = []
@@ -2295,6 +2363,21 @@ if (!isSwitch && editor.isFocused) {
       )}
       {!toolbarCollapsed && !isReadOnly && (
         <div style={styles.toolbar} onMouseDown={onToolbarMouseDown} onTouchStart={onToolbarTouchStart}>
+          <select
+            value=""
+            title="機能一覧"
+            onMouseDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+            onChange={e => { const id = e.target.value; if (id) runToolbarAction(id) }}
+            style={{ height: 32, maxWidth: 168, fontSize: 13, padding: '0 6px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <option value="" disabled>🧰 機能一覧</option>
+            {ALL_TOOLBAR_ITEMS.flatMap(item => item.id === 'heading'
+              ? [1, 2, 3, 4].map(lv => (
+                  <option key={`heading${lv}`} value={`heading${lv}`}>{item.icon} 見出し{lv}</option>
+                ))
+              : [<option key={item.id} value={item.id}>{item.icon} {item.label}</option>])}
+          </select>
           {toolbarElements}
           {/* visibility:hidden でスペースを保持しつつ非表示 → レイアウトシフトなし */}
           <span style={{ ...styles.savingLabel, visibility: saving ? 'visible' : 'hidden' }}>保存中…</span>

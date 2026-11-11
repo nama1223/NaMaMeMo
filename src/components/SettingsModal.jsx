@@ -264,22 +264,20 @@ export default function SettingsModal({
               <Section title="デフォルトフォントサイズ">
                 <div style={styles.sliderRow}>
                   <span style={styles.sliderLabel}>10px</span>
-                  <input type="range" min={10} max={24} step={1}
+                  <ValueSlider min={10} max={24} step={1}
                     value={localSettings.defaultFontSize || 15}
-                    onChange={e => patch('defaultFontSize', Number(e.target.value))}
-                    style={{ flex: 1 }} />
-                  <span style={styles.sliderLabel}>{localSettings.defaultFontSize || 15}px</span>
+                    display={`${localSettings.defaultFontSize || 15}px`}
+                    onChange={v => patch('defaultFontSize', v)} />
                 </div>
               </Section>
 
               <Section title="本文の行間">
                 <div style={styles.sliderRow}>
                   <span style={styles.sliderLabel}>1.0</span>
-                  <input type="range" min={10} max={30} step={1}
+                  <ValueSlider min={10} max={30} step={1}
                     value={Math.round((localSettings.lineHeight || 1.6) * 10)}
-                    onChange={e => patch('lineHeight', Number(e.target.value) / 10)}
-                    style={{ flex: 1 }} />
-                  <span style={styles.sliderLabel}>{(localSettings.lineHeight || 1.6).toFixed(1)}</span>
+                    display={(localSettings.lineHeight || 1.6).toFixed(1)}
+                    onChange={v => patch('lineHeight', v / 10)} />
                 </div>
               </Section>
 
@@ -289,11 +287,10 @@ export default function SettingsModal({
                 </p>
                 <div style={styles.sliderRow}>
                   <span style={styles.sliderLabel}>0.8</span>
-                  <input type="range" min={8} max={24} step={1}
+                  <ValueSlider min={8} max={24} step={1}
                     value={Math.round((localSettings.nodeLineHeight ?? 1.4) * 10)}
-                    onChange={e => patch('nodeLineHeight', Number(e.target.value) / 10)}
-                    style={{ flex: 1 }} />
-                  <span style={styles.sliderLabel}>{(localSettings.nodeLineHeight ?? 1.4).toFixed(1)}</span>
+                    display={(localSettings.nodeLineHeight ?? 1.4).toFixed(1)}
+                    onChange={v => patch('nodeLineHeight', v / 10)} />
                 </div>
                 <div style={{ marginTop: 8, padding: '6px 10px', background: 'var(--surface)', borderRadius: 6, border: '1px solid var(--border)' }}>
                   {['ノードA（選択中）', 'ノードB', 'ノードC'].map((n, i) => (
@@ -438,6 +435,26 @@ function GoogleDriveSettings({ settings, updateSettings }) {
 
 const gdStyles = {}
 
+// ── 現在値を四角いハンドルの中に表示するスライダー ──
+function ValueSlider({ min, max, step, value, display, onChange }) {
+  const ratio = max > min ? (value - min) / (max - min) : 0
+  return (
+    <div style={{ position: 'relative', flex: 1, height: 26, display: 'flex', alignItems: 'center' }}>
+      <input type="range" className="value-slider" min={min} max={max} step={step}
+        value={value}
+        onChange={e => onChange(Number(e.target.value))} />
+      <span style={{
+        position: 'absolute', top: '50%',
+        left: `calc(18px + (100% - 36px) * ${ratio})`,
+        transform: 'translate(-50%, -50%)',
+        fontSize: 11, fontWeight: 700, color: '#fff',
+        textShadow: '0 0 3px rgba(0,0,0,0.4)',
+        pointerEvents: 'none', whiteSpace: 'nowrap',
+      }}>{display}</span>
+    </div>
+  )
+}
+
 // ── 編集機能の取捨選択UI ──
 function ToolbarEditor({ allItems, enabledIds, onChange }) {
   const [enabled, setEnabled] = useState(() => {
@@ -492,6 +509,7 @@ function ToolbarEditor({ allItems, enabledIds, onChange }) {
   }, [dragOverIdx])
 
   const getLabel = (id) => allItems.find(i => i.id === id)?.label || id
+  const getIcon = (id) => allItems.find(i => i.id === id)?.icon || ''
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 520
   return (
@@ -501,6 +519,7 @@ function ToolbarEditor({ allItems, enabledIds, onChange }) {
         <div style={styles.editorList}>
           {disabled.map(item => (
             <div key={item.id} style={styles.editorItem}>
+              <span style={styles.editorItemIcon}>{item.icon || ''}</span>
               <span style={styles.editorItemLabel}>{item.label}</span>
               <button style={styles.editorMoveBtn} onClick={() => addItem(item.id)} title="追加">→</button>
             </div>
@@ -535,6 +554,7 @@ function ToolbarEditor({ allItems, enabledIds, onChange }) {
                 onPointerUp={onHandleUp}
                 onPointerCancel={() => { draggingRef.current = null; setDragOverIdx(null) }}
               >⠿</span>
+              <span style={styles.editorItemIcon}>{getIcon(id)}</span>
               <span style={styles.editorItemLabel}>{getLabel(id)}</span>
               <button style={{ ...styles.editorMoveBtn, color: '#e53e3e' }} onClick={() => removeItem(id)} title="削除">←</button>
             </div>
@@ -624,6 +644,7 @@ const styles = {
   editorItem: { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderBottom: '1px solid var(--border)' },
   editorDragHandle: { fontSize: 16, color: 'var(--text-muted)', cursor: 'grab', flexShrink: 0, touchAction: 'none', userSelect: 'none', padding: '2px 4px', lineHeight: 1 },
   editorItemLabel: { flex: 1, fontSize: 13, color: 'var(--text)' },
+  editorItemIcon: { width: 24, textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text)', flexShrink: 0 },
   editorMoveBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 8px', borderRadius: 4, color: 'var(--accent)', fontWeight: 700 },
   toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14, color: 'var(--text)', cursor: 'pointer', marginBottom: 12 },
   backupOptions: { background: 'var(--surface)', borderRadius: 10, padding: '12px 14px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 10 },
