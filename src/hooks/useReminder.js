@@ -14,6 +14,7 @@
  *    バックグラウンドのプッシュは Service Worker から行います。
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useDialog } from '../components/DialogProvider'
 
 const DB_NAME    = 'namamemo_reminders'
 const DB_VERSION = 1
@@ -70,6 +71,7 @@ async function getAllReminders() {
 }
 
 export function useReminder() {
+  const { toast, banner } = useDialog()
   const [permission, setPermission] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   )
@@ -158,7 +160,7 @@ export function useReminder() {
     if (permission !== 'granted') {
       const result = await requestPermission()
       if (result !== 'granted') {
-        alert('通知の許可が必要です。ブラウザの設定から通知を許可してください。')
+        banner('通知の許可が必要です。ブラウザの設定から通知を許可してください。')
         return null
       }
     }
@@ -177,7 +179,7 @@ export function useReminder() {
     setReminders(prev => [...prev.filter(r => r.nodeId !== nodeId), reminder])
 
     return reminder
-  }, [permission, requestPermission, scheduleTimer])
+  }, [permission, requestPermission, scheduleTimer, toast, banner])
 
   // ── リマインダーを削除 ──
   const removeReminder = useCallback(async (reminderId) => {

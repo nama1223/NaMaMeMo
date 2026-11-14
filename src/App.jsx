@@ -17,7 +17,9 @@ import { useCategories } from './hooks/useCategories'
 import PublicViewer from './components/PublicViewer';
 import ShareModal from './components/ShareModal';
 import { clearDriveTokenCache } from './utils/driveToken'
+import { withTimeout } from './utils/withTimeout'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { useDialog } from './components/DialogProvider'
 
 function buildThemeVars(themeKey) {
   const t = THEMES[themeKey] || THEMES.light
@@ -67,6 +69,7 @@ const EAR_W = 28, EAR_H = 44, TAB_PX = 4
 const RESIZE_LONGPRESS_MS = 400
 
 export default function App() {
+  const { toast: notifyToast, banner } = useDialog()
   const urlParams = new URLSearchParams(window.location.search);
   let publicId = urlParams.get('p');
   
@@ -156,10 +159,10 @@ export default function App() {
   }, [])
 
   // Drive: フル認証（ユーザー操作が必要な場合）
-  const triggerDriveFullAuth = useCallback(() => {
+  const triggerDriveFullAuth = useCallback(async () => {
     if (!window.google) {
       setDriveReconnectStatus('needed')
-      alert('Google APIが読み込まれていません。ページをリロードしてから再接続してください。')
+      banner('Google APIが読み込まれていません。ページをリロードしてから再接続してください。')
       return
     }
     setDriveReconnectStatus('connecting')
@@ -186,7 +189,7 @@ export default function App() {
       prompt: 'consent',
       login_hint: session?.user?.email || '',
     })
-  }, [updateSettings, flushDriveQueue, session?.user?.email])
+  }, [updateSettings, flushDriveQueue, session?.user?.email, banner])
 
   // Drive: サイレント更新（失敗時はバナーを出してキューに積む）
   useEffect(() => {
@@ -274,24 +277,28 @@ export default function App() {
   const handleTogglePublic = async (nodeId, isPublic) => {
     const { error } = await supabase.from('nodes').update({ is_public: isPublic }).eq('id', nodeId);
     if (error) {
-      alert('公開設定の変更に失敗しました: ' + error.message);
+      banner('公開設定の変更に失敗しました: ' + error.message);
     } else {
       if (setNodes) {
         setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, is_public: isPublic } : n));
       } else {
-         window.location.reload();
+         // トーストを表示してから再読み込みし、完了報告が見える時間を確保する。
+         notifyToast(isPublic ? '🌐 このメモを公開しました！\nURLを知っている人は誰でも閲覧できます。' : '🔒 公開を停止しました。');
+         window.setTimeout(() => window.location.reload(), 4000);
+         return;
       }
-      alert(isPublic ? '🌐 このメモを公開しました！\nURLを知っている人は誰でも閲覧できます。' : '🔒 公開を停止しました。');
+      notifyToast(isPublic ? '🌐 このメモを公開しました！\nURLを知っている人は誰でも閲覧できます。' : '🔒 公開を停止しました。');
     }
   };
 
-  const handleCopyPublicUrl = (nodeId) => {
+  const handleCopyPublicUrl = async (nodeId) => {
     const url = `${window.location.origin}${window.location.pathname}?p=${nodeId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      alert('公開用リンクをコピーしました！\nシークレットウィンドウ等で確認してみてください。\n\n' + url);
-    }).catch(() => {
-      alert('コピーに失敗しました。以下のURLを手動でコピーしてください:\n' + url);
-    });
+    try {
+      await navigator.clipboard.writeText(url)
+      notifyToast('公開用リンクをコピーしました！\nシークレットウィンドウ等で確認してみてください。\n\n' + url)
+    } catch {
+      banner('コピーに失敗しました。以下のURLを手動でコピーしてください:\n' + url)
+    }
   };
 
   const handleRestoreBackup = useCallback(async (backupNodes) => {
@@ -314,14 +321,37 @@ export default function App() {
   }, [activeTheme])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+    // 起動時セッション確認。トークン期限切れ時は裏で更新通信が走るが、
+    // 電波の弱い場所ではその通信が宙吊りになり getSession が返らないことがある。
+    // 5秒で見切って、端末内に保存済みのセッションがあればそれで起動を続行する
+    // （メモ表示は端末内キャッシュでまかない、認証の追いつきは onAuthStateChange に任せる）。
+    let sessionApplied = false
+    const applySession = (s) => {
+      if (sessionApplied) return
+      sessionApplied = true
+      setSession(s)
       setLoading(false)
       // メタデータのニックネームをローカル設定に同期（他端末で変更した場合を考慮）
-      if (session?.user?.user_metadata?.nickname) {
-        updateSettings({ nickname: session.user.user_metadata.nickname })
+      if (s?.user?.user_metadata?.nickname) {
+        updateSettings({ nickname: s.user.user_metadata.nickname })
       }
-    })
+    }
+    const readStoredSession = () => {
+      try {
+        const ref = new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split('.')[0]
+        const raw = localStorage.getItem(`sb-${ref}-auth-token`)
+        if (!raw) return null
+        const parsed = JSON.parse(raw)
+        const s = parsed?.currentSession ?? parsed?.session ?? parsed
+        return s?.access_token && s?.user ? s : null
+      } catch { return null }
+    }
+    withTimeout(supabase.auth.getSession(), 5000, 'getSession timeout')
+      .then(({ data: { session } }) => applySession(session))
+      .catch(() => {
+        console.warn('[Auth] getSession timeout/error – using stored session')
+        applySession(readStoredSession())
+      })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session && _event === 'SIGNED_IN') {
         // Supabase のロックを保持したままコールバック内で非同期処理すると
@@ -548,7 +578,7 @@ export default function App() {
   // ── Drive 診断 ──
   const runDriveDiagnostics = useCallback(async () => {
     if (!selectedId) {
-      alert('診断結果を書き出すメモを先に選択してください')
+      notifyToast('診断結果を書き出すメモを先に選択してください')
       return
     }
     const lines = [
@@ -796,10 +826,10 @@ export default function App() {
         window.location.reload()
 
       } else {
-        alert('未対応のファイル形式です')
+        notifyToast('未対応のファイル形式です')
       }
     } catch (err) {
-      alert('インポートに失敗しました: ' + err.message)
+      banner('インポートに失敗しました: ' + err.message)
     }
   }, [nodes, session?.user?.id, activeCategoryId, showToast])
 

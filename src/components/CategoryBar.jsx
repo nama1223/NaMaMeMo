@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { useDialog } from './DialogProvider'
 
 export default function CategoryBar({
   categories,
@@ -9,6 +10,7 @@ export default function CategoryBar({
   onDelete,
   onReorder,
 }) {
+  const { confirm } = useDialog()
   const [menuOpen, setMenuOpen] = useState(false)
   const [renamingId, setRenamingId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
@@ -72,8 +74,8 @@ export default function CategoryBar({
     }
   }
 
-  const handleDelete = (cat) => {
-    if (window.confirm(`「${cat.name}」を削除しますか？\n中のノードも全て削除されます。`)) {
+  const handleDelete = async (cat) => {
+    if (await confirm(`「${cat.name}」を削除しますか？\n中のノードも全て削除されます。`)) {
       onDelete(cat.id)
     }
   }

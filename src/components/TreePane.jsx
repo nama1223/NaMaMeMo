@@ -11,6 +11,7 @@ import CategoryBar from './CategoryBar'
 import FlickButton from './FlickButton'
 import SearchAndStyleBar from './SearchAndStyleBar'
 import { TRASH_NODE_MARKER } from '../hooks/useNodes'
+import { useDialog } from './DialogProvider'
 
 export default function TreePane({
   categories, activeCategoryId,
@@ -26,6 +27,7 @@ export default function TreePane({
   searchQuery = '',
   onSearchQueryChange,
 }) {
+  const { confirm } = useDialog()
   const hideTrash = settings?.hideTrash ?? false
   const nodeLineHeight = settings?.nodeLineHeight ?? 1.4
 
@@ -227,8 +229,8 @@ export default function TreePane({
         down: {
           label: '完全削除',
           disabled: !selectedNode,
-          onAction: () => {
-            if (selectedNode && window.confirm(`「${selectedNode.title}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
+          onAction: async () => {
+            if (selectedNode && await confirm(`「${selectedNode.title}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
               onDelete(selectedNode.id)
             }
           },
@@ -238,8 +240,8 @@ export default function TreePane({
         down: {
           label: '完全削除',
           disabled: !has,
-          onAction: () => {
-            if (has && window.confirm(`「${selectedNode.title}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
+          onAction: async () => {
+            if (has && await confirm(`「${selectedNode.title}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
               onDelete(selectedNode.id)
             }
           },
@@ -267,10 +269,10 @@ export default function TreePane({
 
   const draggingId = dragState?.nodeId || null
 
-  const handleDeleteBtnTap = useCallback(() => {
+  const handleDeleteBtnTap = useCallback(async () => {
     if (!selectedNode) return
     if (isInTrash && !isSelectedTrashNode) {
-      if (window.confirm(`「${selectedNode.title}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
+      if (await confirm(`「${selectedNode.title}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
         onDelete(selectedNode.id)
       }
     } else if (isSelectedTrashNode) {
@@ -278,7 +280,7 @@ export default function TreePane({
     } else {
       onMoveToTrash(selectedNode.id)
     }
-  }, [selectedNode, isInTrash, isSelectedTrashNode, onDelete, onMoveToTrash])
+  }, [selectedNode, isInTrash, isSelectedTrashNode, onDelete, onMoveToTrash, confirm])
 
   return (
     <div style={styles.pane}>

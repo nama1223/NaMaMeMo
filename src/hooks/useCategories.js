@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { cacheCategories, getCachedCategories } from '../utils/offlineDB'
+import { withTimeout } from '../utils/withTimeout'
+import { useDialog } from '../components/DialogProvider'
 
 export function useCategories(userId) {
+  const { toast, banner } = useDialog()
   const [categories, setCategories] = useState([])
   const [activeCategoryId, setActiveCategoryId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -13,11 +16,23 @@ export function useCategories(userId) {
     if (!userId) return
     setFetchError(false)
     setLoading(true)
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('user_id', userId)
-      .order('position', { ascending: true })
+    // 通信が宙吊りになると await が返らず読み込みが終わらないため 8 秒で見切る。
+    // タイムアウト・例外は error と同じ経路に入れてキャッシュ復元を必ず試みる
+    let data, error
+    try {
+      ;({ data, error } = await withTimeout(
+        supabase
+          .from('categories')
+          .select('*')
+          .eq('user_id', userId)
+          .order('position', { ascending: true }),
+        8000,
+        'categories fetch timeout'
+      ))
+    } catch (e) {
+      data = null
+      error = e
+    }
 
     if (error) {
       // キャッシュから復元を試みる
@@ -116,7 +131,7 @@ export function useCategories(userId) {
   // カテゴリ削除（カテゴリ内のノードも cascade で消える）
   const deleteCategory = useCallback(async (id) => {
     if (categories.length <= 1) {
-      alert('最後のカテゴリは削除できません')
+      toast('最後のカテゴリは削除できません')
       return
     }
     const { error } = await supabase
@@ -128,7 +143,7 @@ export function useCategories(userId) {
     const next = categories.filter(c => c.id !== id)
     setCategories(next)
     if (activeCategoryId === id) setActiveCategoryId(next[0]?.id ?? null)
-  }, [userId, categories, activeCategoryId])
+  }, [userId, categories, activeCategoryId, toast, banner])
 
   // カテゴリ並べ替え（ドラッグ後に新順序配列を渡す）
   const reorderCategories = useCallback(async (ordered) => {

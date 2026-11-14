@@ -21,6 +21,7 @@ import { supabase } from '../supabaseClient'
 import { ALL_TOOLBAR_ITEMS } from '../hooks/useSettings'
 import { TRASH_NODE_MARKER } from '../hooks/useNodes'
 import { getValidDriveToken } from '../utils/driveToken'
+import { useDialog } from './DialogProvider'
 
 // ── 長押しタップ暴発防止用のグローバルタイマー ──
 let g_lastContextMenuTime = 0;
@@ -1091,6 +1092,7 @@ const FONT_FAMILIES = [
 export default forwardRef(function RichEditor(
   { node, onUpdateContent, onTogglePublic, onCopyPublicUrl, userId, toolbarCollapsed, onTextFileDrop, settings, readOnly, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }, ref
 ) {
+  const { toast, banner } = useDialog()
   const defaultFontSize = settings?.defaultFontSize || 15
   const lineHeight = settings?.lineHeight || 1.6
   const isTrash = node?.content?.includes(TRASH_NODE_MARKER) ?? false
@@ -1474,11 +1476,11 @@ if (!isSwitch && editor.isFocused) {
         }).run()
       })
     } catch (err) {
-      alert('⚠️ PDFの保存に失敗しました。\n詳細: ' + err.message)
+      banner('⚠️ PDFの保存に失敗しました。\n詳細: ' + err.message)
     } finally {
       setUploadingText(null)
     }
-  }, [userId, editor, isReadOnly, settings])
+  }, [userId, editor, isReadOnly, settings, toast, banner])
 
   // ── 動画ファイル処理 ──
   const handleVideoFile = useCallback(async (file) => {
@@ -1510,9 +1512,9 @@ if (!isSwitch && editor.isFocused) {
         }).run()
       })
     } catch (err) {
-      alert('⚠️ 動画の保存に失敗しました。\n詳細: ' + err.message)
+      banner('⚠️ 動画の保存に失敗しました。\n詳細: ' + err.message)
     } finally { setUploadingText(null) }
-  }, [userId, editor, isReadOnly, settings])
+  }, [userId, editor, isReadOnly, settings, toast, banner])
 
   const handleAudioFile = useCallback(async (file) => {
     if (!userId || !editor || isReadOnly) return;
@@ -1530,11 +1532,11 @@ if (!isSwitch && editor.isFocused) {
         }).run();
       });
     } catch (err) {
-      alert("⚠️ 音声の保存に失敗しました。\n詳細: " + err.message);
+      banner("⚠️ 音声の保存に失敗しました。\n詳細: " + err.message);
     } finally {
       setUploadingText(null);
     }
-  }, [userId, editor, isReadOnly, settings])
+  }, [userId, editor, isReadOnly, settings, toast, banner])
 
   const handleImageFile = useCallback(async (file) => {
     if (!userId || !editor || isReadOnly) return; 
@@ -1564,9 +1566,9 @@ if (!isSwitch && editor.isFocused) {
         } catch (err) {
           const msg = err.message || ''
           if (msg.includes('insufficient') || msg.includes('UNAUTHENTICATED') || msg.includes('invalid_grant')) {
-            alert("⚠️ Google Driveの認証が切れています。\n一度ログアウトして再ログインし、Drive連携を再承認してください。")
+            banner("⚠️ Google Driveの認証が切れています。\n一度ログアウトして再ログインし、Drive連携を再承認してください。")
           } else {
-            alert("⚠️ Google Driveへの保存に失敗しました。\n詳細: " + msg)
+            banner("⚠️ Google Driveへの保存に失敗しました。\n詳細: " + msg)
           }
           setUploadingText(null);
           return;
@@ -1586,11 +1588,11 @@ if (!isSwitch && editor.isFocused) {
       });
 
     } catch (e) { 
-      alert('画像アップロード失敗: ' + e.message);
+      banner('画像アップロード失敗: ' + e.message);
     } finally { 
       setUploadingText(null);
     }
-  }, [userId, editor, isReadOnly, settings])
+  }, [userId, editor, isReadOnly, settings, toast, banner])
 
   const handleFile = useCallback(async (file) => {
     if (isReadOnly) return
@@ -1605,9 +1607,9 @@ if (!isSwitch && editor.isFocused) {
     } else if (isTextFile(file)) { 
        const text = await file.text(); onTextFileDrop?.(file, text) 
     } else { 
-       alert(`「${file.name}」は対応していないファイル形式です`)
+       toast(`「${file.name}」は対応していないファイル形式です`)
     }
-  }, [handleImageFile, handleAudioFile, handleVideoFile, handlePdfFile, onTextFileDrop, isReadOnly])
+  }, [handleImageFile, handleAudioFile, handleVideoFile, handlePdfFile, onTextFileDrop, isReadOnly, toast, banner])
 
   const handleFileSelect = useCallback(() => {
     if (isReadOnly) return
@@ -2486,6 +2488,7 @@ if (!isSwitch && editor.isFocused) {
 })
 
 function CompressDialog({ dialog, editor, editorAreaRef, userId, onClose }) {
+  const { toast, banner } = useDialog()
   const [applying, setApplying] = useState(false)
   const fmt = b => b==null?'不明':b<1048576?`${(b/1024).toFixed(1)} KB`:`${(b/1048576).toFixed(2)} MB`
   const pct = dialog.originalSize ? Math.round((1 - dialog.compressedSize/dialog.originalSize)*100) : null
@@ -2516,7 +2519,7 @@ function CompressDialog({ dialog, editor, editorAreaRef, userId, onClose }) {
         })
       })
       onClose()
-    } catch(e) { alert('圧縮画像の保存に失敗: ' + e.message) }
+    } catch(e) { banner('圧縮画像の保存に失敗: ' + e.message) }
     setApplying(false)
   }
 
@@ -3326,6 +3329,7 @@ function ChildrenSummaryModal({ node, allNodes, onClose }) {
 
 // ── ホーム画面ショートカット追加モーダル ──
 function HomeShortcutModal({ node, onClose }) {
+  const { toast, banner } = useDialog()
   const nodeUrl = `${window.location.origin}${window.location.pathname}?node=${encodeURIComponent(node.id)}`
   const ua = navigator.userAgent.toLowerCase()
   const isAndroid = ua.includes('android')
@@ -3338,7 +3342,7 @@ function HomeShortcutModal({ node, onClose }) {
     navigator.clipboard?.writeText(nodeUrl).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
-    }).catch(() => alert(nodeUrl))
+    }).catch(() => banner(nodeUrl))
   }
 
   // ブラウザで開く（ノード名をURLに付与してタブタイトルに使えるよう準備）

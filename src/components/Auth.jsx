@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { MAX_LOGIN_COUNT } from '../hooks/useSettings'
+import { useDialog } from './DialogProvider'
 
 export default function Auth({ limitReached = false }) {
+  const { toast, banner } = useDialog()
   const [loginCount, setLoginCount] = useState(null)
   const [loadingCount, setLoadingCount] = useState(true)
   // 既存ユーザー：localStorage から保存済みニックネームを自動補完
@@ -34,7 +36,7 @@ export default function Auth({ limitReached = false }) {
 
   const handleLogin = async () => {
     const trimmed = nickname.trim()
-    if (!trimmed) { alert('ニックネームを入力してください'); return }
+    if (!trimmed) { toast('ニックネームを入力してください'); return }
 
     // ニックネームをOAuth完了後に拾えるよう一時保存
     sessionStorage.setItem('pending_nickname', trimmed)
@@ -51,7 +53,7 @@ export default function Auth({ limitReached = false }) {
         redirectTo: window.location.origin + window.location.pathname,
       },
     })
-    if (error) alert('ログインエラー: ' + error.message)
+    if (error) banner('ログインエラー: ' + error.message)
   }
 
   const isFull = loginCount !== null && loginCount >= MAX_LOGIN_COUNT

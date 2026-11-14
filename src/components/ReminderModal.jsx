@@ -5,6 +5,7 @@
  * - 通知本文にノードタイトル表示
  */
 import { useState, useEffect } from 'react'
+import { useDialog } from './DialogProvider'
 
 const DB_NAME = 'namamemo_reminders', DB_VER = 1, STORE = 'reminders'
 
@@ -46,6 +47,7 @@ async function del(id) {
 }
 
 export default function ReminderModal({ node, onClose }) {
+  const { toast, banner } = useDialog()
   const now = new Date()
   const toLocal = d => {
     const p = n => String(n).padStart(2,'0')
@@ -73,9 +75,9 @@ export default function ReminderModal({ node, onClose }) {
 
   const handleSave = async () => {
     const scheduledAt = new Date(dateValue).getTime()
-    if (isNaN(scheduledAt)||scheduledAt<=Date.now()) { alert('未来の日時を指定してください。'); return }
+    if (isNaN(scheduledAt)||scheduledAt<=Date.now()) { toast('未来の日時を指定してください。'); return }
     let p = perm
-    if (p!=='granted') { p = await requestPerm(); if (p!=='granted') { alert('通知を許可してください。'); return } }
+    if (p!=='granted') { p = await requestPerm(); if (p!=='granted') { banner('通知を許可してください。'); return } }
     setSaving(true)
     const reminder = {
       id: existing?.id || `r_${node.id}_${Date.now()}`,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ALL_TOOLBAR_ITEMS, THEMES, THEME_ROWS, MAX_DB_MB, MAX_STORAGE_MB } from '../hooks/useSettings'
 import { supabase } from '../supabaseClient'
+import { useDialog } from './DialogProvider'
 
 const POSITION_OPTIONS = [
   { value: 'left', label: '左', icon: '▐' },
@@ -14,6 +15,7 @@ export default function SettingsModal({
   onBackupNow, onFetchBackupList, onFetchBackupAt, onRestoreBackup,
   userId, onPreviewTheme,
 }) {
+  const { confirm } = useDialog()
   const [localSettings, setLocalSettings] = useState(settings)
   const [tab, setTab] = useState('general')
   const [backupList, setBackupList] = useState([])
@@ -104,7 +106,7 @@ export default function SettingsModal({
 
   const handleRestore = async () => {
     if (!selectedBackup) return
-    if (!window.confirm('このバックアップを復元しますか？\n現在のデータは上書きされます。')) return
+    if (!await confirm('このバックアップを復元しますか？\n現在のデータは上書きされます。')) return
     setRestoring(true)
     const backupNodes = await onFetchBackupAt(selectedBackup)
     await onRestoreBackup(backupNodes)

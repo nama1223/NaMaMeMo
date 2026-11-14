@@ -217,3 +217,28 @@ input[type="range"].value-slider::-moz-range-track {
   border-radius: 3px;
   background: var(--border);
 }
+/* アプリ内確認ダイアログ。既存モーダルと同じテーマ変数を使用 */
+.app-dialog-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(0, 0, 0, 0.48);
+}
+.app-dialog {
+  width: min(420px, 100%); padding: 22px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+}
+.app-dialog-message { font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+.app-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.app-dialog-actions button { padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+.app-dialog-cancel { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.app-dialog-ok { background: var(--accent); border: none; color: white; font-weight: 600; }
+.app-notice-banners, .app-notice-toasts { position: fixed; left: 50%; transform: translateX(-50%); width: min(680px, calc(100vw - 24px)); display: flex; flex-direction: column; gap: 8px; z-index: 1200; pointer-events: none; }
+.app-notice-banners { top: 12px; }
+.app-notice-toasts { bottom: 18px; align-items: center; }
+.app-notice-banner, .app-notice-toast { box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.16); color: var(--text); background: var(--surface); font-size: 13px; line-height: 1.5; white-space: pre-wrap; pointer-events: auto; }
+.app-notice-banner { border-left: 4px solid #d97706; }
+.app-notice-message { flex: 1; min-width: 0; }
+.app-notice-banner button { flex: 0 0 auto; padding: 6px 10px; border: 1px solid var(--border); border-radius: 7px; color: var(--text); background: var(--bg); cursor: pointer; }
+.app-notice-toast { max-width: 100%; color: white; background: var(--text); border-color: transparent; }

@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import RichEditor from './RichEditor'
 import { TRASH_NODE_MARKER } from '../hooks/useNodes'
+import { useDialog } from './DialogProvider'
 
 export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userId, settings, onEmptyTrash, onTogglePublic, onCopyPublicUrl, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }) {
   const [editingTitle, setEditingTitle] = useState(false)
+  const { confirm } = useDialog()
   const [titleValue, setTitleValue] = useState('')
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false)
   const [textDropDialog, setTextDropDialog] = useState(null)
@@ -102,8 +104,8 @@ export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userI
           <p style={styles.trashDesc2}>ツリーの削除ボタン（左フリック）で個別に復元できます。</p>
           <button
             style={styles.emptyTrashBtn}
-            onClick={() => {
-              if (window.confirm('ごみ箱を空にしますか？\nごみ箱内のノードが全て完全に削除されます。この操作は取り消せません。')) {
+            onClick={async () => {
+              if (await confirm('ごみ箱を空にしますか？\nごみ箱内のノードが全て完全に削除されます。この操作は取り消せません。')) {
                 onEmptyTrash?.()
               }
             }}

@@ -10,6 +10,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { getValidDriveToken } from '../utils/driveToken'
+import { useDialog } from '../components/DialogProvider'
 
 const DB_NAME = 'namamemo_drive_migration'
 const DB_VER  = 1
@@ -176,6 +177,7 @@ function replacedriveIdInHtml(html, oldId, newId) {
 }
 
 export function useDriveMigration(userId, settings, updateSettings) {
+  const { toast, banner } = useDialog()
   const [queue, setQueue]       = useState([])   // 全キュー
   const [running, setRunning]   = useState(false)
   const [current, setCurrent]   = useState(null) // 現在処理中のアイテム
@@ -235,7 +237,7 @@ export function useDriveMigration(userId, settings, updateSettings) {
     const db = dbRef.current
     if (!db || running) return
     if (!settings?.useGoogleDrive || !settings?.googleDriveToken) {
-      alert('Google Drive連携が必要です。設定から連携してください。')
+      banner('Google Drive連携が必要です。設定から連携してください。')
       return
     }
     abortRef.current = false
@@ -292,7 +294,7 @@ export function useDriveMigration(userId, settings, updateSettings) {
       const pending = await dbGetAll(db, 'status', 'pending')
       setQueue(pending)
     }
-  }, [running, settings])
+  }, [running, settings, toast, banner])
 
   const stopMigration = useCallback(() => {
     abortRef.current = true

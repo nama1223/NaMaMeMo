@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { MAX_LOGIN_COUNT, MAX_DB_MB, MAX_STORAGE_MB } from '../hooks/useSettings'
+import { useDialog } from './DialogProvider'
 
 // 管理者判定：環境変数で管理者メールを設定
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean)
@@ -17,6 +18,7 @@ function fmtMB(bytes) {
 }
 
 export default function AdminModal({ onClose, currentUserId, onRunDiagnostics }) {
+  const { confirm, toast, banner } = useDialog()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
@@ -83,10 +85,10 @@ export default function AdminModal({ onClose, currentUserId, onRunDiagnostics })
 
   const handleDeleteUser = async (userId) => {
     if (userId === currentUserId) {
-      alert('自分自身は削除できません')
+      toast('自分自身は削除できません')
       return
     }
-    if (!window.confirm(`このユーザーの全データを削除しますか？\n（ノード・カテゴリ・バックアップ全て）`)) return
+    if (!await confirm(`このユーザーの全データを削除しますか？\n（ノード・カテゴリ・バックアップ全て）`)) return
     setDeleting(userId)
     try {
       await supabase.from('node_backups').delete().eq('user_id', userId)
@@ -95,7 +97,7 @@ export default function AdminModal({ onClose, currentUserId, onRunDiagnostics })
       setUsers(prev => prev.filter(u => u.id !== userId))
       setTotalLoginCount(prev => prev - 1)
     } catch (e) {
-      alert('削除中にエラーが発生しました: ' + e.message)
+      banner('削除中にエラーが発生しました: ' + e.message)
     }
     setDeleting(null)
   }
