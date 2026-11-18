@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
+import NicknameSetup from './components/NicknameSetup'
 import { MAX_LOGIN_COUNT } from './hooks/useSettings'
 import TreePane from './components/TreePane'
 import EditorPane from './components/EditorPane'
@@ -94,6 +95,8 @@ export default function App() {
   const [shareModal, setShareModal] = useState(null) // { title, text, url, files:[] }
   const [driveReconnectStatus, setDriveReconnectStatus] = useState(null) // null | 'needed' | 'connecting' （Edge Function が失敗した場合のみ 'needed' になる）
   const [loginLimitReached, setLoginLimitReached] = useState(false)
+  // 初回設定でニックネームを保存した直後は、セッション側の情報が更新されるまでの間もゲートを表示しない
+  const [nicknameGateCleared, setNicknameGateCleared] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const driveCallbackQueue = useRef([])
 
@@ -374,26 +377,13 @@ export default function App() {
             return
           }
 
-          // セッションを即座にセット → アプリを表示（ニックネーム保存を待たない）
+          // セッションを即座にセット（ニックネーム未登録なら初回設定画面が表示される）
           setSession(session)
           setLoading(false)
 
-          // ニックネームはバックグラウンドで保存（ブロッキングしない）
-          const pendingNickname = sessionStorage.getItem('pending_nickname')
+          // 登録済みユーザーはメタデータのニックネームをローカル設定に同期
           const existingNickname = session.user?.user_metadata?.nickname
-          if (pendingNickname) {
-            sessionStorage.removeItem('pending_nickname')
-            // 既存ユーザー（Supabaseにニックネームがすでにある）は入力値で上書きしない
-            if (!existingNickname) {
-              supabase.auth.updateUser({ data: { nickname: pendingNickname } })
-                .then(() => updateSettings({ nickname: pendingNickname }))
-                .catch(e => console.warn('[Auth] ニックネーム保存失敗:', e))
-            } else {
-              // 既存ユーザーはSupabase側の正のニックネームを使う
-              updateSettings({ nickname: existingNickname })
-            }
-          } else if (existingNickname) {
-            // 既存ユーザー：メタデータのニックネームをローカル設定に同期
+          if (existingNickname) {
             updateSettings({ nickname: existingNickname })
           }
         }, 0)
@@ -897,6 +887,22 @@ export default function App() {
   if (loading) return <Spinner />
   if (loginLimitReached) return <Auth limitReached />
   if (!session) return <Auth />
+
+  // ニックネーム未登録のアカウントは初回設定画面を出し、設定するまでアプリ本体に進めない。
+  // 登録済みのアカウントには表示されない。
+  const registeredNickname = session.user?.user_metadata?.nickname
+  const needsNicknameSetup = !nicknameGateCleared
+    && !(typeof registeredNickname === 'string' && registeredNickname.trim().length > 0)
+  if (needsNicknameSetup) {
+    return (
+      <NicknameSetup
+        onComplete={(name) => {
+          updateSettings({ nickname: name })
+          setNicknameGateCleared(true)
+        }}
+      />
+    )
+  }
 
   const earBase = {
     position: 'absolute', padding: 0, border: '1px solid var(--border)',

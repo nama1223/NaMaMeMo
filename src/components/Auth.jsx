@@ -4,22 +4,10 @@ import { MAX_LOGIN_COUNT } from '../hooks/useSettings'
 import { useDialog } from './DialogProvider'
 
 export default function Auth({ limitReached = false }) {
-  const { toast, banner } = useDialog()
+  const { banner } = useDialog()
   const [loginCount, setLoginCount] = useState(null)
   const [loadingCount, setLoadingCount] = useState(true)
-  // 既存ユーザー：localStorage から保存済みニックネームを自動補完
-  const [nickname, setNickname] = useState(() => {
-    try {
-      const s = localStorage.getItem('namamemo_settings')
-      if (s) return JSON.parse(s)?.nickname || ''
-    } catch {}
-    return ''
-  })
   const [showGuide, setShowGuide] = useState(false)
-  // 既存ユーザー（localStorageに設定が存在する）かどうか
-  const isReturningUser = (() => {
-    try { return !!localStorage.getItem('namamemo_settings') } catch { return false }
-  })()
 
   useEffect(() => {
     const fetchCount = async () => {
@@ -35,12 +23,6 @@ export default function Auth({ limitReached = false }) {
   }, [])
 
   const handleLogin = async () => {
-    const trimmed = nickname.trim()
-    if (!trimmed) { toast('ニックネームを入力してください'); return }
-
-    // ニックネームをOAuth完了後に拾えるよう一時保存
-    sessionStorage.setItem('pending_nickname', trimmed)
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -57,8 +39,7 @@ export default function Auth({ limitReached = false }) {
   }
 
   const isFull = loginCount !== null && loginCount >= MAX_LOGIN_COUNT
-  // 既存ユーザーはニックネーム未入力でもログイン可。新規ユーザーは必須
-  const canLogin = !isFull && !limitReached && (isReturningUser || nickname.trim().length > 0)
+  const canLogin = !isFull && !limitReached
 
   return (
     <div style={styles.container}>
@@ -77,26 +58,6 @@ export default function Auth({ limitReached = false }) {
             <span style={styles.countLabel}>現在のユーザー数</span>
             <span style={styles.countValue}>{loadingCount ? '…' : `${loginCount} / ${MAX_LOGIN_COUNT}`}</span>
             {isFull && <span style={styles.fullBadge}>満員</span>}
-          </div>
-        )}
-
-        {/* ニックネーム入力 */}
-        {!isFull && !limitReached && (
-          <div style={styles.nicknameWrap}>
-            <label style={styles.nicknameLabel}>
-              ニックネーム{isReturningUser ? <span style={{ fontWeight: 400, color: '#888', fontSize: 11 }}>（任意・変更する場合は入力）</span> : <span style={{ color: '#e53e3e' }}>（必須）</span>}
-            </label>
-            <input
-              type="text"
-              value={nickname}
-              onChange={e => setNickname(e.target.value.slice(0, 20))}
-              onKeyDown={e => e.key === 'Enter' && canLogin && handleLogin()}
-              placeholder="例：なまた"
-              maxLength={20}
-              style={styles.nicknameInput}
-              autoComplete="off"
-            />
-            <p style={styles.nicknameHint}>※ 管理者から誰が利用しているか識別するために使います。後から設定で変更できます。</p>
           </div>
         )}
 
@@ -125,7 +86,6 @@ export default function Auth({ limitReached = false }) {
               <div style={styles.guideBox}>
                 <p style={styles.guideTitle}>🔐 ログインの流れ</p>
                 <ol style={styles.guideList}>
-                  <li>上の入力欄にニックネームを入力します。</li>
                   <li>「Googleでログイン」を押すと、Googleの認証画面が開きます。</li>
                   <li>使用するGoogleアカウントを選択します。</li>
                   <li style={{ color: '#b45309' }}>
@@ -133,10 +93,10 @@ export default function Auth({ limitReached = false }) {
                     「続行」または「許可」を押してください。
                     <br />※ この許可がないと画像・ファイルの添付機能が使えません。
                   </li>
-                  <li>認証完了後、自動的にアプリに戻ります。</li>
+                  <li>認証完了後、自動的にアプリに戻ります。初めての方は、続いてニックネームの設定画面が表示されます。</li>
                 </ol>
                 <p style={styles.guideNote}>
-                  💡 2回目以降のログインは手順4の画面は表示されません。
+                  💡 2回目以降のログインは手順3の画面は表示されません。
                 </p>
               </div>
             )}
@@ -168,10 +128,6 @@ const styles = {
   countLabel: { fontSize:12, color:'#666' },
   countValue: { fontSize:16, fontWeight:700, color:'#1a1a2e', fontVariantNumeric:'tabular-nums' },
   fullBadge: { fontSize:10, background:'#e53e3e', color:'white', padding:'2px 6px', borderRadius:10, fontWeight:700 },
-  nicknameWrap: { marginBottom:16, textAlign:'left' },
-  nicknameLabel: { display:'block', fontSize:13, fontWeight:600, color:'#333', marginBottom:6 },
-  nicknameInput: { width:'100%', padding:'10px 12px', border:'2px solid #e0e0e0', borderRadius:8, fontSize:15, outline:'none', boxSizing:'border-box', transition:'border-color 0.2s', color:'#1a1a2e' },
-  nicknameHint: { fontSize:11, color:'#888', marginTop:5, lineHeight:1.5 },
   button: { display:'flex', alignItems:'center', justifyContent:'center', width:'100%', padding:'12px 24px', background:'white', border:'2px solid #e0e0e0', borderRadius:8, fontSize:16, transition:'all 0.2s', color:'#333', marginTop:4 },
   guideToggle: { background:'none', border:'none', color:'#667eea', fontSize:12, cursor:'pointer', padding:'4px 0', textDecoration:'underline' },
   guideBox: { marginTop:10, padding:'14px 16px', background:'#f8f7ff', borderRadius:10, border:'1px solid #d0caff', textAlign:'left' },

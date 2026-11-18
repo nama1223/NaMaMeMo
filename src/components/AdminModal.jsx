@@ -10,6 +10,12 @@ export function isAdmin(email) {
   return ADMIN_EMAILS.length > 0 && ADMIN_EMAILS.includes(email)
 }
 
+function fmtDate(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('ja-JP')
+}
+
 function fmtMB(bytes) {
   if (bytes == null) return '—'
   if (bytes < 1024) return `${bytes} B`
@@ -38,6 +44,9 @@ export default function AdminModal({ onClose, currentUserId, onRunDiagnostics })
           nodeCount: u.node_count || 0,
           dbBytes: u.db_bytes || 0,
           storageBytes: null,
+          // 登録日・最終ログイン日（集計側が返すようになったら表示される）
+          registeredAt: u.registered_at ?? u.created_at ?? null,
+          lastLoginAt: u.last_sign_in_at ?? u.last_login_at ?? null,
         }))
       } else {
         // RPC未設定の場合は自分のデータのみ（フォールバック）
@@ -164,6 +173,9 @@ export default function AdminModal({ onClose, currentUserId, onRunDiagnostics })
                       </div>
                       <div style={styles.userMeta}>
                         カテゴリ: {user.categories.slice(0, 2).join(', ')}{user.categories.length > 2 ? '…' : ''} / ノード: {user.nodeCount}件
+                      </div>
+                      <div style={styles.userMeta}>
+                        登録: {fmtDate(user.registeredAt)} / 最終ログイン: {fmtDate(user.lastLoginAt)}
                       </div>
 
                       {/* DB使用量バー */}
