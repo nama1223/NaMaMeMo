@@ -1,6 +1,14 @@
-export const VERSION = '1.05'
+export const VERSION = '1.06'
 
 export const CHANGELOG = [
+  {
+    version: '1.06',
+    date: '2026-11-18',
+    items: [
+      '管理者パネル：メモから消えたのに Google Drive に残ってしまった添付ファイルを探して片付ける機能を追加しました',
+      'メモを完全に削除したときや、ごみ箱を空にしたときに、そのメモだけの添付ファイルは Google Drive からも一緒に片付けるようにしました',
+    ],
+  },
   {
     version: '1.05',
     date: '2026-11-18',

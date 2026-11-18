@@ -5,14 +5,19 @@ import {
   markNodeDirty, markNodeDeleted,
   getPendingSync, clearPendingSync,
 } from '../utils/offlineDB'
+import { withTimeout } from '../utils/withTimeout'
+import { cleanupDriveFilesAfterNodeDelete } from '../utils/driveOrphans'
 
 // ごみ箱ノードの特別ID（ユーザーごとにDBに保存される特殊ノード）
 export const TRASH_NODE_TITLE = '🗑 ごみ箱'
 export const TRASH_NODE_MARKER = '__TRASH_NODE__' // contentに埋め込むマーカー
 
-export function useNodes(userId, categoryId) {
+export function useNodes(userId, categoryId, settings = {}) {
   const [nodes, setNodes] = useState([])
   const [loading, setLoading] = useState(true)
+  // Drive後片付け用に最新の設定を保持（コールバックの依存には含めない）
+  const settingsRef = useRef(settings)
+  useEffect(() => { settingsRef.current = settings }, [settings])
   const lastSavedContent = useRef({})
   const onExternalUpdateRef = useRef(null)
   // 最新のノード配列への参照（オフライン書き込み時に使用）
@@ -43,10 +48,22 @@ export function useNodes(userId, categoryId) {
 
   const fetchNodes = useCallback(async () => {
     if (!userId || !categoryId) { setNodes([]); setLoading(false); return }
-    const { data, error } = await supabase
-      .from('nodes').select('*')
-      .eq('user_id', userId).eq('category_id', categoryId)
-      .order('position', { ascending: true })
+    // 通信が宙吊りになると await が返らず読み込みが終わらないため 8 秒で見切る。
+    // タイムアウト・例外は error と同じ経路に入れてキャッシュ復元を必ず試みる
+    let data, error
+    try {
+      ;({ data, error } = await withTimeout(
+        supabase
+          .from('nodes').select('*')
+          .eq('user_id', userId).eq('category_id', categoryId)
+          .order('position', { ascending: true }),
+        8000,
+        'nodes fetch timeout'
+      ))
+    } catch (e) {
+      data = null
+      error = e
+    }
     if (!error) {
       const ns = data || []
       setNodes(ns)
@@ -268,12 +285,20 @@ export function useNodes(userId, categoryId) {
 
     console.log(`[OfflineSync] dirty:${dirtyNodes.length} deleted:${deletedIds.length}`)
     try {
+      let deletedContents = []
       if (deletedIds.length > 0) {
+        // Drive後片付け用に、消す前に本文を取得しておく
+        const { data: delRows } = await supabase.from('nodes').select('content').in('id', deletedIds)
+        deletedContents = (delRows || []).map(r => r.content || '')
         await supabase.from('nodes').delete().in('id', deletedIds)
       }
       if (dirtyNodes.length > 0) {
         // upsert でオフライン中の insert/update を一括反映
         await supabase.from('nodes').upsert(dirtyNodes, { onConflict: 'id' })
+      }
+      if (deletedContents.length > 0) {
+        // 残っているノード・バックアップから参照されていない添付だけを Drive からも消す
+        cleanupDriveFilesAfterNodeDelete(userId, settingsRef.current, deletedContents)
       }
       await clearPendingSync(userId)
       // 権威ある状態を取得し直す
@@ -291,10 +316,17 @@ export function useNodes(userId, categoryId) {
       const ids = [id]; nodesRef.current.filter(n => n.parent_id === id).forEach(c => ids.push(...collectIds(c.id))); return ids
     }
     const ids = collectIds(nodeId)
+    // Drive後片付け用に、削除される本文と残る本文を控えておく
+    const deletedContents = nodesRef.current.filter(n => ids.includes(n.id)).map(n => n.content || '')
+    const survivingContents = nodesRef.current.filter(n => !ids.includes(n.id)).map(n => n.content || '')
     ids.forEach(id => markSelfWrite(id))
     const { error } = await supabase.from('nodes').delete().in('id', ids)
-    if (!error) { setNodes(prev => prev.filter(n => !ids.includes(n.id))); ids.forEach(id => delete lastSavedContent.current[id]) }
-  }, [markSelfWrite])
+    if (!error) {
+      setNodes(prev => prev.filter(n => !ids.includes(n.id))); ids.forEach(id => delete lastSavedContent.current[id])
+      // 残っているノード・バックアップから参照されていない添付だけを Drive からも消す（裏側で実行）
+      cleanupDriveFilesAfterNodeDelete(userId, settingsRef.current, deletedContents, survivingContents)
+    }
+  }, [markSelfWrite, userId])
 
   // ── ごみ箱に移動（元の位置を記憶） ──
   const moveToTrash = useCallback(async (nodeId) => {
@@ -399,13 +431,18 @@ export function useNodes(userId, categoryId) {
 
     if (idsToDelete.length === 0) return
 
+    // Drive後片付け用に、削除される本文と残る本文を控えておく
+    const deletedContents = nodes.filter(n => idsToDelete.includes(n.id)).map(n => n.content || '')
+    const survivingContents = nodes.filter(n => !idsToDelete.includes(n.id)).map(n => n.content || '')
     idsToDelete.forEach(id => markSelfWrite(id))
     const { error } = await supabase.from('nodes').delete().in('id', idsToDelete)
     if (!error) {
       setNodes(prev => prev.filter(n => !idsToDelete.includes(n.id)))
       idsToDelete.forEach(id => delete lastSavedContent.current[id])
+      // 残っているノード・バックアップから参照されていない添付だけを Drive からも消す（裏側で実行）
+      cleanupDriveFilesAfterNodeDelete(userId, settingsRef.current, deletedContents, survivingContents)
     }
-  }, [nodes, markSelfWrite])
+  }, [nodes, markSelfWrite, userId])
 
   const updateTitle = useCallback(async (nodeId, title) => {
     markSelfWrite(nodeId)

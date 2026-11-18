@@ -134,7 +134,7 @@ export default function App() {
     getLastSelectedId, saveLastSelectedId,
     registerExternalUpdateHandler,
     syncOfflineChanges,
-  } = useNodes(session?.user?.id, activeCategoryId)
+  } = useNodes(session?.user?.id, activeCategoryId, settings)
 
   const { runBackup, fetchBackupList, fetchBackupAt } = useBackup(
     session?.user?.id, nodes, settings
@@ -1168,7 +1168,7 @@ export default function App() {
         />
       )}
       {changelogOpen && <ChangelogModal onClose={() => setChangelogOpen(false)} />}
-      {adminOpen && <AdminModal onClose={() => setAdminOpen(false)} currentUserId={session.user.id} onRunDiagnostics={runDriveDiagnostics} />}
+      {adminOpen && <AdminModal onClose={() => setAdminOpen(false)} currentUserId={session.user.id} onRunDiagnostics={runDriveDiagnostics} settings={settings} />}
       {reminderModal && <ReminderModal node={reminderModal.node} onClose={() => setReminderModal(null)} />}
       {shareModal && (
         <ShareModal
