@@ -1,6 +1,13 @@
-export const VERSION = '1.04'
+export const VERSION = '1.05'
 
 export const CHANGELOG = [
+  {
+    version: '1.05',
+    date: '2026-11-18',
+    items: [
+      'エディタ：画像やファイルの長押し・右クリックで出るメニューが、画面の下や右にはみ出して下の項目が見えないことがある問題を修正しました（入力候補のリストも、画面内に収まるよう表示位置を改善）',
+    ],
+  },
   {
     version: '1.04',
     date: '2026-11-18',

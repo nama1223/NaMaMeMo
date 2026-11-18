@@ -15,12 +15,13 @@ import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table
 import CharacterCount from '@tiptap/extension-character-count'
 import Mention from '@tiptap/extension-mention'
 import Youtube from '@tiptap/extension-youtube'
-import { useEffect, useCallback, useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import { useEffect, useLayoutEffect, useCallback, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import * as ReactDOM from 'react-dom'
 import { supabase } from '../supabaseClient'
 import { ALL_TOOLBAR_ITEMS } from '../hooks/useSettings'
 import { TRASH_NODE_MARKER } from '../hooks/useNodes'
 import { getValidDriveToken } from '../utils/driveToken'
+import { clampMenuPos } from '../utils/menuPosition'
 import { useDialog } from './DialogProvider'
 
 // ── 長押しタップ暴発防止用のグローバルタイマー ──
@@ -2575,8 +2576,18 @@ function UndoRedoBtn({ editor, type, depth, editorAreaRef, disabled }) {
 
 function ContextMenu({ menuRef, menu, editor, editorAreaRef, onClose, onStartMove, onMoveToOtherNode, onCopyNode, onStartCompress, settings }) {
   const { x, y, type, src, filename, content, driveId } = menu
-  const menuX = Math.min(x, window.innerWidth - 210)
-  const menuY = Math.min(y, window.innerHeight - 300)
+  // 表示位置：まず項目数からの見積もりで画面内に配置し、マウント後に実寸で補正する
+  // （項目は下で組み立てるが、数は種別で決まる：通常5項目／画像は+3項目）
+  const itemCount = type === 'image' ? 8 : 5
+  const [menuPos, setMenuPos] = useState(() => clampMenuPos(x, y, 232, itemCount * 45 + 2, window.innerWidth, window.innerHeight))
+  useLayoutEffect(() => {
+    const el = menuRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const naturalH = Math.max(rect.height, el.scrollHeight || 0)
+    const next = clampMenuPos(x, y, rect.width, naturalH, window.innerWidth, window.innerHeight)
+    setMenuPos(prev => (prev.left === next.left && prev.top === next.top && prev.maxHeight === next.maxHeight) ? prev : next)
+  }, [x, y, menuRef])
 
   const make = (fn) => (e) => { e.stopPropagation(); e.preventDefault(); fn(); onClose() }
 
@@ -2726,7 +2737,7 @@ function ContextMenu({ menuRef, menu, editor, editorAreaRef, onClose, onStartMov
 
   return (
     <div ref={menuRef}
-      style={{ position:'fixed', left:menuX, top:menuY, zIndex:500, background:'var(--bg)', border:'1.5px solid var(--border)', borderRadius:10, boxShadow:'0 6px 24px rgba(0,0,0,0.18)', overflow:'hidden', minWidth:200 }}
+      style={{ position:'fixed', left:menuPos.left, top:menuPos.top, zIndex:500, background:'var(--bg)', border:'1.5px solid var(--border)', borderRadius:10, boxShadow:'0 6px 24px rgba(0,0,0,0.18)', overflowX:'hidden', overflowY: menuPos.maxHeight ? 'auto' : 'hidden', ...(menuPos.maxHeight ? { maxHeight: menuPos.maxHeight } : {}), minWidth:200 }}
       onPointerDown={e=>e.stopPropagation()}
     >
       {items.map((item,i) => (
@@ -2951,12 +2962,19 @@ function MentionDropdown({ state, keyHandlerRef }) {
   const rect = state.clientRect?.()
   if (!rect) return null
 
+  // 候補リストを画面内に収める：基本はキャレットの下に出し、下に収まらなければ上に開く
+  const vw = window.innerWidth, vh = window.innerHeight
+  const estH = Math.min(state.items.length * 34 + 8, 280)
+  let anchorY = rect.bottom + 4
+  if (anchorY + estH > vh - 8 && rect.top - 4 - estH >= 8) anchorY = rect.top - 4 - estH
+  const pos = clampMenuPos(rect.left, anchorY, 280, estH, vw, vh)
+
   const popStyle = {
-    position:'fixed', left: Math.min(rect.left, window.innerWidth - 200),
-    top: rect.bottom + 4, zIndex:1200,
+    position:'fixed', left: pos.left,
+    top: pos.top, zIndex:1200,
     background:'var(--bg)', border:'1.5px solid var(--border)',
     borderRadius:8, boxShadow:'0 6px 24px rgba(0,0,0,0.2)',
-    padding:4, minWidth:160, maxWidth:280, maxHeight:280, overflowY:'auto',
+    padding:4, minWidth:160, maxWidth:280, maxHeight: pos.maxHeight ?? 280, overflowY:'auto',
   }
 
   return ReactDOM.createPortal(
