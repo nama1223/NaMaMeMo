@@ -1,6 +1,13 @@
-export const VERSION = '1.06'
+export const VERSION = '1.07'
 
 export const CHANGELOG = [
+  {
+    version: '1.07',
+    date: '2026-11-20',
+    items: [
+      'Google Drive連携：添付ファイルの保存先フォルダを、NamaStudio フォルダの中に作るようにしました（すでにあるフォルダはそのまま使います。保存先が変わっても、今までの添付ファイルはそのまま開けます）',
+    ],
+  },
   {
     version: '1.06',
     date: '2026-11-18',

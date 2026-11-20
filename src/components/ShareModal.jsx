@@ -4,6 +4,7 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { getValidDriveToken } from '../utils/driveToken'
+import { getOrCreateAppFolder } from '../utils/driveFolder'
 
 
 function extractVideoThumb(blob) {
@@ -31,21 +32,7 @@ function escHtml(str) {
 }
 
 async function uploadToDrive(file, token, onProgress) {
-  const FOLDER = 'NaMaMeMo'
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-  const sd = await searchRes.json()
-  if (sd.error) throw new Error(sd.error.message)
-  let folderId = sd.files?.[0]?.id
-  if (!folderId) {
-    const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: FOLDER, mimeType: 'application/vnd.google-apps.folder' })
-    })
-    folderId = (await cr.json()).id
-  }
+  const folderId = await getOrCreateAppFolder(token)
   const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json',

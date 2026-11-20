@@ -10,6 +10,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { getValidDriveToken } from '../utils/driveToken'
+import { getOrCreateAppFolder } from '../utils/driveFolder'
 import { useDialog } from '../components/DialogProvider'
 
 const DB_NAME = 'namamemo_drive_migration'
@@ -108,21 +109,7 @@ async function copyDriveFile(oldDriveId, token, originalFilename) {
   const blob = await dlRes.blob()
 
   // 3. NaMaMeMoフォルダを取得/作成
-  const FOLDER = 'NaMaMeMo'
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-  const searchData = await searchRes.json()
-  let folderId = searchData.files?.[0]?.id
-  if (!folderId) {
-    const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: FOLDER, mimeType: 'application/vnd.google-apps.folder' })
-    })
-    folderId = (await cr.json()).id
-  }
+  const folderId = await getOrCreateAppFolder(token)
 
   // 4. 新DriveにアップロードResumable
   const filename = originalFilename || meta.name || 'file'

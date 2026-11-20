@@ -18,6 +18,7 @@ import Youtube from '@tiptap/extension-youtube'
 import { useEffect, useLayoutEffect, useCallback, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import * as ReactDOM from 'react-dom'
 import { supabase } from '../supabaseClient'
+import { getOrCreateAppFolder } from '../utils/driveFolder'
 import { ALL_TOOLBAR_ITEMS } from '../hooks/useSettings'
 import { TRASH_NODE_MARKER } from '../hooks/useNodes'
 import { getValidDriveToken } from '../utils/driveToken'
@@ -858,27 +859,7 @@ function compressImage(src, quality = 0.7, maxWidth = 1280) {
 
 // Google Drive へファイルをアップロードする関数
 async function uploadToGoogleDrive(file, token) {
-  const FOLDER_NAME = 'NaMaMeMo';
-  
-  let folderId = null;
-  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const searchData = await searchRes.json();
-  if (searchData.error) throw new Error(searchData.error.message);
-  
-  if (searchData.files && searchData.files.length > 0) {
-    folderId = searchData.files[0].id;
-  } else {
-    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
-    });
-    const createData = await createRes.json();
-    if (createData.error) throw new Error(createData.error.message);
-    folderId = createData.id;
-  }
+  const folderId = await getOrCreateAppFolder(token);
 
   const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=media', {
     method: 'POST',
@@ -910,24 +891,7 @@ async function uploadToGoogleDrive(file, token) {
 
 // ── プログレス付きGoogleDriveアップロード（動画用）──
 async function uploadToGoogleDriveWithProgress(file, token, onProgress) {
-  const FOLDER_NAME = 'NaMaMeMo'
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-  const searchData = await searchRes.json()
-  if (searchData.error) throw new Error(searchData.error.message)
-  let folderId = searchData.files?.[0]?.id
-  if (!folderId) {
-    const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
-    })
-    const cd = await cr.json()
-    if (cd.error) throw new Error(cd.error.message)
-    folderId = cd.id
-  }
+  const folderId = await getOrCreateAppFolder(token)
   const initRes = await fetch(
     `https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable`,
     {
