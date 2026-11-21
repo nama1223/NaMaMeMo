@@ -18,6 +18,14 @@ export default function PublicViewer({ rootId }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isTreeOpen, setIsTreeOpen] = useState(window.innerWidth > 768);
 
+  // ── ツリーの開閉状態（nullは未初期化。初期はルートだけ開き、以後は端末に保存） ──
+  const [expandedIds, setExpandedIds] = useState(null);
+  // ── サイドバーの幅（端末に保存） ──
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = parseInt(localStorage.getItem('namamemo-public-sidebar-width') || '', 10);
+    return Number.isFinite(saved) ? Math.min(520, Math.max(180, saved)) : 260;
+  });
+
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
@@ -42,6 +50,12 @@ export default function PublicViewer({ rootId }) {
           setError(`このページは存在しないか、公開が停止されています。（対象ID: ${rootId}）`);
         } else {
           setNodes(data);
+          let initialExpanded = null;
+          try {
+            const saved = JSON.parse(localStorage.getItem(`namamemo-public-tree:${rootId}`) || 'null');
+            if (Array.isArray(saved)) initialExpanded = saved.filter(id => data.some(n => n.id === id));
+          } catch (e) { /* 保存データが読めなくても続行する */ }
+          setExpandedIds(new Set(initialExpanded !== null ? initialExpanded : [rootId]));
           const root = data.find(n => n.id === rootId);
           setActiveNode(root || data[0]);
         }
@@ -71,6 +85,34 @@ export default function PublicViewer({ rootId }) {
     if (isMobile) setIsTreeOpen(false);
   };
 
+  const toggleExpand = (id) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev || []);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem(`namamemo-public-tree:${rootId}`, JSON.stringify([...next])); } catch (e) { /* 保存できなくても続行する */ }
+      return next;
+    });
+  };
+
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+    const onMove = (ev) => {
+      setSidebarWidth(Math.min(520, Math.max(180, startW + (ev.clientX - startX))));
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setSidebarWidth(w => {
+        try { localStorage.setItem('namamemo-public-sidebar-width', String(w)); } catch (err) { /* 保存できなくても続行する */ }
+        return w;
+      });
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f7f7f8' }}>
@@ -91,33 +133,52 @@ export default function PublicViewer({ rootId }) {
   }
 
   const renderTree = (parentId) => {
+    if (!expandedIds || !expandedIds.has(parentId)) return null;
     const children = nodes.filter(n => n.parent_id === parentId).sort((a, b) => a.position - b.position);
     if (children.length === 0) return null;
-    
+
     return (
-      <div style={{ marginLeft: 16, borderLeft: '1px solid #e5e5e7', paddingLeft: 8, marginTop: 4 }}>
-        {children.map(node => (
-          <div key={node.id}>
-            <div 
-              style={{ 
-                padding: '8px 10px', 
-                cursor: 'pointer', 
+      <div style={{ marginLeft: 8, borderLeft: '1px solid #e5e5e7', paddingLeft: 6, marginTop: 2 }}>
+        {children.map(node => {
+          const hasKids = nodes.some(n => n.parent_id === node.id);
+          const isOpen = expandedIds.has(node.id);
+          return (
+            <div key={node.id}>
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 2,
                 background: activeNode?.id === node.id ? '#e2e8f0' : 'transparent',
-                color: activeNode?.id === node.id ? '#1a1a1a' : '#4a4a4a',
-                borderRadius: 6,
-                marginBottom: 2,
-                fontSize: 14,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}
-              onClick={() => handleNodeSelect(node)}
-            >
-              📄 {node.title || '無題のメモ'}
+                borderRadius: 6, marginBottom: 2
+              }}>
+                {hasKids ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleExpand(node.id); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 2px 0 4px', fontSize: 10, color: '#888', flexShrink: 0, lineHeight: 1 }}
+                    title={isOpen ? 'たたむ' : 'ひらく'}
+                  >{isOpen ? '▾' : '▸'}</button>
+                ) : (
+                  <span style={{ width: 16, flexShrink: 0 }} />
+                )}
+                <div
+                  style={{
+                    padding: '5px 6px 5px 0',
+                    cursor: 'pointer',
+                    color: activeNode?.id === node.id ? '#1a1a1a' : '#4a4a4a',
+                    fontSize: 14,
+                    lineHeight: 1.35,
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    flex: 1, minWidth: 0
+                  }}
+                  onClick={() => handleNodeSelect(node)}
+                  title={node.title || '無題のメモ'}
+                >
+                  {node.title || '無題のメモ'}
+                </div>
+              </div>
+              {renderTree(node.id)}
             </div>
-            {renderTree(node.id)}
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -127,7 +188,7 @@ export default function PublicViewer({ rootId }) {
   const sidebarStyle = isMobile ? {
     position: 'fixed',
     top: 0, left: 0, bottom: 0,
-    width: 280, maxWidth: '85vw',
+    width: sidebarWidth, maxWidth: '88vw',
     background: '#f1f1f3',
     zIndex: 50,
     transform: isTreeOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -135,15 +196,18 @@ export default function PublicViewer({ rootId }) {
     boxShadow: isTreeOpen ? '4px 0 24px rgba(0,0,0,0.15)' : 'none',
     borderRight: '1px solid #e5e5e7',
     overflowY: 'auto',
-    padding: 20
+    overflowX: 'auto',
+    padding: 14
   } : {
     display: isTreeOpen ? 'block' : 'none',
-    width: 260,
+    position: 'relative',
+    width: sidebarWidth,
     height: '100vh',
     background: '#f1f1f3',
     borderRight: '1px solid #e5e5e7',
     overflowY: 'auto',
-    padding: 16,
+    overflowX: 'auto',
+    padding: 12,
     flexShrink: 0
   };
 
@@ -182,27 +246,53 @@ export default function PublicViewer({ rootId }) {
 
         {rootNode && (
           <div>
-            <div 
-              style={{ 
-                padding: '10px 12px', 
-                cursor: 'pointer', 
+            <div
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: 2,
+                padding: '8px 8px 8px 4px',
                 background: activeNode?.id === rootNode.id ? '#e2e8f0' : 'white',
                 border: '1px solid #e5e5e7',
-                color: '#1a1a1a',
                 borderRadius: 8,
-                fontWeight: 'bold',
                 marginBottom: 4,
-                fontSize: 15,
                 boxShadow: activeNode?.id === rootNode.id ? 'none' : '0 1px 2px rgba(0,0,0,0.05)'
               }}
-              onClick={() => handleNodeSelect(rootNode)}
             >
-              🌐 {rootNode.title || '無題のメモ'}
+              {nodes.some(n => n.parent_id === rootNode.id) ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleExpand(rootNode.id); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '5px 2px 0 2px', fontSize: 10, color: '#888', flexShrink: 0, lineHeight: 1 }}
+                  title={expandedIds?.has(rootNode.id) ? 'たたむ' : 'ひらく'}
+                >{expandedIds?.has(rootNode.id) ? '▾' : '▸'}</button>
+              ) : (
+                <span style={{ width: 15, flexShrink: 0 }} />
+              )}
+              <div
+                style={{ cursor: 'pointer', color: '#1a1a1a', fontWeight: 'bold', fontSize: 15, lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word', flex: 1, minWidth: 0 }}
+                onClick={() => handleNodeSelect(rootNode)}
+                title={rootNode.title || '無題のメモ'}
+              >
+                🌐 {rootNode.title || '無題のメモ'}
+              </div>
             </div>
             {renderTree(rootNode.id)}
           </div>
         )}
       </div>
+
+      {/* ── サイドバーの幅リサイズ（右端をドラッグ） ── */}
+      {!isMobile && isTreeOpen && (
+        <div
+          onPointerDown={handleResizeStart}
+          style={{ width: 8, marginLeft: -4, flexShrink: 0, cursor: 'col-resize', touchAction: 'none', zIndex: 20 }}
+          title="ドラッグでメニューの幅を変更"
+        />
+      )}
+      {isMobile && isTreeOpen && (
+        <div
+          onPointerDown={handleResizeStart}
+          style={{ position: 'fixed', top: 0, bottom: 0, left: Math.min(sidebarWidth, window.innerWidth * 0.88) - 7, width: 14, cursor: 'col-resize', touchAction: 'none', zIndex: 60 }}
+        />
+      )}
 
       {/* ── メインエディタエリア (読み取り専用) ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'white', minWidth: 0 }}>
