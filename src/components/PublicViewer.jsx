@@ -115,7 +115,7 @@ export default function PublicViewer({ rootId }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#f7f7f8' }}>
+      <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f7f8' }}>
         <div style={{ fontSize: 16, color: '#888' }}>⏳ 読み込み中...</div>
       </div>
     );
@@ -123,7 +123,7 @@ export default function PublicViewer({ rootId }) {
   
   if (error) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#f7f7f8', padding: 20 }}>
+      <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f7f8', padding: 20 }}>
         <div style={{ fontSize: 15, color: '#dc2626', fontWeight: 'bold', textAlign: 'center', lineHeight: 1.6 }}>
           ⚠️ エラーが発生しました<br/>
           <span style={{ fontSize: 13, color: '#666', fontWeight: 'normal' }}>{error}</span>
@@ -152,11 +152,11 @@ export default function PublicViewer({ rootId }) {
                 {hasKids ? (
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleExpand(node.id); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 6px 7px 8px', margin: '-2px 0 -2px -4px', fontSize: 12, color: '#6b6b70', flexShrink: 0, lineHeight: 1, borderRadius: 6 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', width: 38, marginLeft: -22, paddingRight: 4, textAlign: 'right', fontSize: 13, fontWeight: 'bold', color: isOpen ? '#5b6af0' : '#a8a8ae', flexShrink: 0, lineHeight: 1.4 }}
                     title={isOpen ? 'たたむ' : 'ひらく'}
                   >{isOpen ? '▾' : '▸'}</button>
                 ) : (
-                  <span style={{ width: 23, flexShrink: 0 }} />
+                  <span style={{ width: 16, flexShrink: 0 }} />
                 )}
                 <div
                   style={{
@@ -210,7 +210,7 @@ export default function PublicViewer({ rootId }) {
     display: isTreeOpen ? 'block' : 'none',
     position: 'relative',
     width: sidebarWidth,
-    height: '100dvh',
+    height: '100%',
     background: '#f1f1f3',
     borderRight: '1px solid #e5e5e7',
     overflowY: 'auto',
@@ -220,7 +220,7 @@ export default function PublicViewer({ rootId }) {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100dvh', width: '100%', background: '#f7f7f8', fontFamily: 'sans-serif', overflow: 'hidden',
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', background: '#f7f7f8', fontFamily: 'sans-serif', overflow: 'hidden',
       // CSS変数をここで定義（RichEditorのスタイルが参照する）
       '--bg': '#ffffff', '--surface': '#f7f7f8', '--border': '#e5e5e7',
       '--text': '#1a1a1a', '--text-muted': '#8e8e93',
@@ -268,11 +268,11 @@ export default function PublicViewer({ rootId }) {
               {nodes.some(n => n.parent_id === rootNode.id) ? (
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleExpand(rootNode.id); }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 6px 7px 6px', margin: '-2px 0 -2px -2px', fontSize: 12, color: '#6b6b70', flexShrink: 0, lineHeight: 1, borderRadius: 6 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', width: 36, marginLeft: -16, paddingRight: 4, textAlign: 'right', fontSize: 13, fontWeight: 'bold', color: expandedIds?.has(rootNode.id) ? '#5b6af0' : '#a8a8ae', flexShrink: 0, lineHeight: 1.4 }}
                   title={expandedIds?.has(rootNode.id) ? 'たたむ' : 'ひらく'}
                 >{expandedIds?.has(rootNode.id) ? '▾' : '▸'}</button>
               ) : (
-                <span style={{ width: 21, flexShrink: 0 }} />
+                <span style={{ width: 20, flexShrink: 0 }} />
               )}
               <div
                 style={{ cursor: 'pointer', color: '#1a1a1a', fontWeight: 'bold', fontSize: 15, lineHeight: 1.35, whiteSpace: 'normal', wordBreak: 'break-word', flex: 1, minWidth: 0 }}
