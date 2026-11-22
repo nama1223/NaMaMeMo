@@ -95,6 +95,7 @@ export default function App() {
   const [previewTheme, setPreviewTheme] = useState(null)
   const [shareModal, setShareModal] = useState(null) // { title, text, url, files:[] }
   const [commentBadges, setCommentBadges] = useState({ byNode: {}, byCategory: {}, total: 0 }) // コメント新着バッジ
+  const [commentCounts, setCommentCounts] = useState({}) // ノード別コメント総件数 { nodeId: 件数 }
   const [commentAdminNodeId, setCommentAdminNodeId] = useState(null) // コメント管理を開いているノードID
   const [driveReconnectStatus, setDriveReconnectStatus] = useState(null) // null | 'needed' | 'connecting' （Edge Function が失敗した場合のみ 'needed' になる）
   const [loginLimitReached, setLoginLimitReached] = useState(false)
@@ -313,15 +314,23 @@ export default function App() {
   const fetchCommentBadges = useCallback(async () => {
     if (!session?.user?.id) return
     const { data, error } = await supabase.rpc('get_comment_badges')
-    if (error || !data) return // SQL未適用の間はバッジなしで通常動作
-    const byNode = {}, byCategory = {}
-    let total = 0
-    data.forEach(r => {
-      byNode[r.node_id] = r.cnt
-      if (r.category_id) byCategory[r.category_id] = (byCategory[r.category_id] || 0) + r.cnt
-      total += r.cnt
-    })
-    setCommentBadges({ byNode, byCategory, total })
+    if (!error && data) {
+      const byNode = {}, byCategory = {}
+      let total = 0
+      data.forEach(r => {
+        byNode[r.node_id] = r.cnt
+        if (r.category_id) byCategory[r.category_id] = (byCategory[r.category_id] || 0) + r.cnt
+        total += r.cnt
+      })
+      setCommentBadges({ byNode, byCategory, total })
+    }
+    // 総件数（既読でもコメントへ辿り着けるよう、本文下部のボタン表示に使う）
+    const { data: counts } = await supabase.rpc('get_comment_counts')
+    if (counts) {
+      const m = {}
+      counts.forEach(r => { m[r.node_id] = r.cnt })
+      setCommentCounts(m)
+    }
   }, [session?.user?.id])
 
   useEffect(() => { fetchCommentBadges() }, [fetchCommentBadges])
@@ -1097,6 +1106,8 @@ export default function App() {
         onCopyPublicUrl={handleCopyPublicUrl}
         onUpdateCommentSettings={handleUpdateCommentSettings}
         onOpenCommentAdmin={handleOpenCommentAdmin}
+        commentCounts={commentCounts}
+        commentBadgesByNode={commentBadges.byNode}
         onOpenReminder={openReminderModal}
         onNavigateAttachment={handleNavigateAttachment}
         allNodes={nodes}

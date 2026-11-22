@@ -461,12 +461,29 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
+
+-- ノード別コメント総件数（本文下部のコメントボタン表示用）
+create or replace function public.get_comment_counts()
+returns table (node_id uuid, cnt int)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then
+    return;
+  end if;
+  return query
+    select c.node_id, count(*)::int
+    from public.comments c
+    where c.owner_id = auth.uid()
+    group by c.node_id;
+end $$;
+
 -- ── 6. 実行権限 ───────────────────────────────────────────────────
 grant execute on function public.get_public_comment_info(uuid)                 to anon, authenticated;
 grant execute on function public.get_public_comments(uuid, uuid, uuid[])       to anon, authenticated;
 grant execute on function public.post_comment(uuid, uuid, text, text, text, text) to anon, authenticated;
 grant execute on function public.edit_comment(uuid, text, text)                to anon, authenticated;
 grant execute on function public.get_owner_comments(uuid)                      to authenticated;
+grant execute on function public.get_comment_counts()                          to authenticated;
 grant execute on function public.get_comment_badges()                          to authenticated;
 grant execute on function public.moderate_comment(uuid, text)                  to authenticated;
 grant execute on function public.owner_reply(uuid, uuid, text)                 to authenticated;

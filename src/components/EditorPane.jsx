@@ -3,7 +3,7 @@ import RichEditor from './RichEditor'
 import { TRASH_NODE_MARKER } from '../hooks/useNodes'
 import { useDialog } from './DialogProvider'
 
-export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userId, settings, onEmptyTrash, onTogglePublic, onCopyPublicUrl, onUpdateCommentSettings, onOpenCommentAdmin, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }) {
+export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userId, settings, onEmptyTrash, onTogglePublic, onCopyPublicUrl, onUpdateCommentSettings, onOpenCommentAdmin, commentCounts, commentBadgesByNode, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }) {
   const [editingTitle, setEditingTitle] = useState(false)
   const { confirm } = useDialog()
   const [titleValue, setTitleValue] = useState('')
@@ -13,6 +13,18 @@ export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userI
   const richEditorRef = useRef(null)
 
   const isTrashNode = node?.content?.includes(TRASH_NODE_MARKER) ?? false
+
+  // このノードが公開ツリーの中にいるか（自分が公開ルート or 祖先に公開ルートがいる）
+  const publicRoot = (() => {
+    if (!node || isTrashNode) return null
+    let cur = node, guard = 0
+    while (cur && guard < 100) {
+      if (cur.is_public) return cur
+      cur = (allNodes || []).find(x => x.id === cur.parent_id)
+      guard++
+    }
+    return null
+  })()
 
   useEffect(() => {
     if (node) setTitleValue(node.title)
@@ -137,6 +149,24 @@ export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userI
         </div>
       )}
 
+      {/* 公開ツリー内のノードには、本文の下にコメントへの入口を常設する（既読でも辿り着ける） */}
+      {!isTrashNode && publicRoot && (
+        <button
+          onClick={() => onOpenCommentAdmin?.(node)}
+          style={styles.commentBar}
+          title="このメモのコメントを開く"
+        >
+          <span>💬 コメント {(commentCounts?.[node.id] || 0)}件</span>
+          {(commentBadgesByNode?.[node.id] || 0) > 0 && (
+            <span style={styles.commentBadge}>{commentBadgesByNode[node.id]}件の新着・承認待ち</span>
+          )}
+          {(publicRoot.comment_mode || 'off') === 'off' && (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>（コメントはオフ）</span>
+          )}
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>開く ›</span>
+        </button>
+      )}
+
       {textDropDialog && (
         <div style={styles.dialogOverlay} onClick={() => setTextDropDialog(null)}>
           <div style={styles.dialog} onClick={e => e.stopPropagation()}>
@@ -170,6 +200,8 @@ const styles = {
   titleInput: { flex: 1, fontSize: 18, fontWeight: 700, border: 'none', borderBottom: '2px solid var(--accent)', outline: 'none', background: 'transparent', color: 'var(--text)', padding: '2px 4px', width: '100%' },
   collapseBtn: { flexShrink: 0, width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' },
   editorWrap: { flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+  commentBar: { flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 16px', background: 'var(--surface)', border: 'none', borderTop: '1px solid var(--border)', fontSize: 13, fontWeight: 600, color: 'var(--text)', cursor: 'pointer', textAlign: 'left' },
+  commentBadge: { fontSize: 10, fontWeight: 700, color: 'white', background: '#dc2626', borderRadius: 8, padding: '2px 7px' },
   empty: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', background: 'var(--bg)' },
   emptyInner: { textAlign: 'center', color: 'var(--text-muted)' },
   emptyIcon: { fontSize: 48 },
