@@ -30,7 +30,7 @@ export default function CommentAdminModal({ node, onClose, onChanged }) {
   const fetchComments = useCallback(async () => {
     const { data, error } = await supabase.rpc('get_owner_comments', { p_node_id: node.id })
     if (error) {
-      setLoadError('コメントを読み込めませんでした。データベースの準備（SQLの実行）が済んでいるか確認してください')
+      setLoadError(`コメントを読み込めませんでした（理由: ${error.message}）`)
       setLoading(false)
       return
     }

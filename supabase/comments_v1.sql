@@ -318,7 +318,7 @@ returns table (
 language plpgsql stable security definer set search_path = public as $$
 begin
   if not exists (
-    select 1 from public.nodes where id = p_node_id and user_id = auth.uid()
+    select 1 from public.nodes n where n.id = p_node_id and n.user_id = auth.uid()
   ) then
     return;
   end if;
