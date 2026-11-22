@@ -141,6 +141,31 @@ export function useNodes(userId, categoryId, settings = {}) {
   }, [nodes])
 
   // ── Realtime ──
+  // 自分の変更の「エコー」判定：届いた行が手元のノードと全項目一致なら、
+  // 既に反映済みの自分の変更なので外部更新として扱わない。
+  // （markSelfWrite を経由しない直接更新＝公開切替・コメント設定変更などでも誤報しないため）
+  const isEchoOfLocal = useCallback((row) => {
+    const local = nodesRef.current.find(n => n.id === row.id)
+    if (!local) return false
+    const styleEq = (a, b) => {
+      if (a === b) return true
+      if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
+      const ka = Object.keys(a), kb = Object.keys(b)
+      if (ka.length !== kb.length) return false
+      return ka.every(k => a[k] === b[k])
+    }
+    return local.title === row.title
+      && local.content === row.content
+      && (local.parent_id ?? null) === (row.parent_id ?? null)
+      && (local.category_id ?? null) === (row.category_id ?? null)
+      && local.position === row.position
+      && !!local.is_public === !!row.is_public
+      && !!local.is_expanded === !!row.is_expanded
+      && (local.comment_mode || 'off') === (row.comment_mode || 'off')
+      && (local.admin_name ?? null) === (row.admin_name ?? null)
+      && styleEq(local.title_style, row.title_style)
+  }, [])
+
   useEffect(() => {
     if (!userId || !categoryId) return
     const channelName = `nodes-${userId}-${categoryId}-v2`
@@ -157,6 +182,7 @@ export function useNodes(userId, categoryId, settings = {}) {
         if (rowCategoryId && rowCategoryId !== categoryId) return
 
         if (eventType === 'UPDATE' && newRow && isSelfWrite(id, newRow.content)) return
+        if (eventType === 'UPDATE' && newRow && isEchoOfLocal(newRow)) return
         if (eventType !== 'UPDATE' && id && isSelfWrite(id)) return
 
         onExternalUpdateRef.current?.()
@@ -164,7 +190,7 @@ export function useNodes(userId, categoryId, settings = {}) {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [userId, categoryId, isSelfWrite])
+  }, [userId, categoryId, isSelfWrite, isEchoOfLocal])
 
   const registerExternalUpdateHandler = useCallback((fn) => {
     onExternalUpdateRef.current = fn
@@ -653,6 +679,7 @@ export function useNodes(userId, categoryId, settings = {}) {
     getOrCreateTrashNode,
     getLastSelectedId, saveLastSelectedId,
     fetchNodes, registerExternalUpdateHandler,
+    markSelfWrite, // App側の直接更新（公開切替・コメント設定など）が自分の変更だと印すため
     syncOfflineChanges, // オンライン復帰時の同期
   }
 }

@@ -137,6 +137,7 @@ export default function App() {
     getLastSelectedId, saveLastSelectedId,
     registerExternalUpdateHandler,
     syncOfflineChanges,
+    markSelfWrite,
   } = useNodes(session?.user?.id, activeCategoryId, settings)
 
   const { runBackup, fetchBackupList, fetchBackupAt } = useBackup(
@@ -281,6 +282,7 @@ export default function App() {
 
 
   const handleTogglePublic = async (nodeId, isPublic) => {
+    markSelfWrite?.(nodeId);
     const { error } = await supabase.from('nodes').update({ is_public: isPublic }).eq('id', nodeId);
     if (error) {
       banner('公開設定の変更に失敗しました: ' + error.message);
@@ -325,6 +327,7 @@ export default function App() {
   useEffect(() => { fetchCommentBadges() }, [fetchCommentBadges])
 
   const handleUpdateCommentSettings = async (nodeId, patch) => {
+    markSelfWrite?.(nodeId);
     const { error } = await supabase.from('nodes').update(patch).eq('id', nodeId);
     if (error) {
       banner('コメント設定の変更に失敗しました: ' + error.message);
