@@ -9,6 +9,8 @@ export default function CategoryBar({
   onRename,
   onDelete,
   onReorder,
+  commentBadgesByCategory = null,
+  commentBadgeTotal = 0,
 }) {
   const { confirm } = useDialog()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -86,6 +88,9 @@ export default function CategoryBar({
         <FolderIcon />
         <span style={{ fontSize: 11 }}>カテゴリ</span>
         <span style={{ fontSize: 8, opacity: 0.8 }}>{menuOpen ? '▲' : '▼'}</span>
+        {commentBadgeTotal > 0 && (
+          <span style={{ minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#dc2626', color: 'white', fontSize: 10, fontWeight: 700, lineHeight: '16px', textAlign: 'center' }}>{commentBadgeTotal}</span>
+        )}
       </button>
 
       <select
@@ -152,6 +157,11 @@ export default function CategoryBar({
                       onDoubleClick={() => handleRenameStart(cat)}
                     >
                       {cat.name}
+                    </span>
+                  )}
+                  {commentBadgesByCategory?.[cat.id] > 0 && (
+                    <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: '#dc2626', color: 'white', fontSize: 10, fontWeight: 700, lineHeight: '18px', textAlign: 'center', flexShrink: 0 }} title="新着コメント">
+                      {commentBadgesByCategory[cat.id]}
                     </span>
                   )}
 

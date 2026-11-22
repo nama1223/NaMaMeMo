@@ -26,6 +26,10 @@ export default function TreePane({
   settings,
   searchQuery = '',
   onSearchQueryChange,
+  commentBadgesByNode = null,
+  commentBadgesByCategory = null,
+  commentBadgeTotal = 0,
+  onOpenCommentAdmin = null,
 }) {
   const { confirm } = useDialog()
   const hideTrash = settings?.hideTrash ?? false
@@ -298,6 +302,8 @@ export default function TreePane({
           onSelect={onSelectCategory} onAdd={onAddCategory}
           onRename={onRenameCategory} onDelete={onDeleteCategory}
           onReorder={onReorderCategories}
+          commentBadgesByCategory={commentBadgesByCategory}
+          commentBadgeTotal={commentBadgeTotal}
         />
       </div>
 
@@ -360,6 +366,8 @@ export default function TreePane({
                 trashNodeId={trashNode?.id}
                 nodeLineHeight={nodeLineHeight}
                 searchQuery={searchQuery}
+                commentBadges={commentBadgesByNode}
+                onCommentBadgeClick={onOpenCommentAdmin}
               />
             ))
           )
@@ -385,6 +393,8 @@ export default function TreePane({
               depth={0}
               trashNodeId={trashNode?.id}
               nodeLineHeight={nodeLineHeight}
+              commentBadges={commentBadgesByNode}
+              onCommentBadgeClick={onOpenCommentAdmin}
             />
           ))
         )}

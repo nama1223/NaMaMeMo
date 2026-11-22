@@ -3,7 +3,7 @@ import RichEditor from './RichEditor'
 import { TRASH_NODE_MARKER } from '../hooks/useNodes'
 import { useDialog } from './DialogProvider'
 
-export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userId, settings, onEmptyTrash, onTogglePublic, onCopyPublicUrl, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }) {
+export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userId, settings, onEmptyTrash, onTogglePublic, onCopyPublicUrl, onUpdateCommentSettings, onOpenCommentAdmin, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }) {
   const [editingTitle, setEditingTitle] = useState(false)
   const { confirm } = useDialog()
   const [titleValue, setTitleValue] = useState('')
@@ -126,6 +126,8 @@ export default function EditorPane({ node, onUpdateContent, onUpdateTitle, userI
             settings={settings}
             onTogglePublic={onTogglePublic}
             onCopyPublicUrl={onCopyPublicUrl}
+            onUpdateCommentSettings={onUpdateCommentSettings}
+            onOpenCommentAdmin={onOpenCommentAdmin}
             onOpenReminder={onOpenReminder}
             onNavigateAttachment={onNavigateAttachment}
             allNodes={allNodes}

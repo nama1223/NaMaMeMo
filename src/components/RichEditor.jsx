@@ -1055,7 +1055,7 @@ const FONT_FAMILIES = [
 // RichEditor 本体
 // ─────────────────────────────────────────────────
 export default forwardRef(function RichEditor(
-  { node, onUpdateContent, onTogglePublic, onCopyPublicUrl, userId, toolbarCollapsed, onTextFileDrop, settings, readOnly, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }, ref
+  { node, onUpdateContent, onTogglePublic, onCopyPublicUrl, onUpdateCommentSettings, onOpenCommentAdmin, userId, toolbarCollapsed, onTextFileDrop, settings, readOnly, onOpenReminder, onNavigateAttachment, allNodes, onImportFile, searchQuery = '' }, ref
 ) {
   const { toast, banner } = useDialog()
   const defaultFontSize = settings?.defaultFontSize || 15
@@ -1092,6 +1092,7 @@ export default forwardRef(function RichEditor(
   const fontSizeInputRef = useRef(null)
   const savedSelectionRef = useRef(null)
   const [openPopover, setOpenPopover] = useState(null)   // 'color'|'highlight'|'align'|'font'|'share'|null
+  const [adminNameDraft, setAdminNameDraft] = useState('') // コメント設定：管理者名の入力下書き
   const [nodeTransferModal, setNodeTransferModal] = useState(null) // { type, src, filename, content, driveId }
   const [homeShortcutModal, setHomeShortcutModal] = useState(false)
   const [exportModal, setExportModal] = useState(false)
@@ -2040,7 +2041,7 @@ if (!isSwitch && editor.isFocused) {
       const isPub = node?.is_public
       return (
         <div key="share" style={{position:'relative'}}>
-          <ToolBtn active={openPopover==='share'||isPub} onClick={()=>setOpenPopover(p=>p==='share'?null:'share')} title={isPub?'公開中（タップで操作）':'Webに公開する'} disabled={isTrash} extraStyle={{fontSize:14,background:isPub?'#38a169':'transparent',color:isPub?'white':'var(--text)'}}>
+          <ToolBtn active={openPopover==='share'||isPub} onClick={()=>{setAdminNameDraft(node?.admin_name||'');setOpenPopover(p=>p==='share'?null:'share')}} title={isPub?'公開中（タップで操作）':'Webに公開する'} disabled={isTrash} extraStyle={{fontSize:14,background:isPub?'#38a169':'transparent',color:isPub?'white':'var(--text)'}}>
             {isPub?'🌐':'🔒'}
           </ToolBtn>
           {openPopover==='share' && (
@@ -2052,6 +2053,30 @@ if (!isSwitch && editor.isFocused) {
                     style={{padding:'8px 12px',background:'var(--accent)',color:'white',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontWeight:600,textAlign:'left'}}>🔗 公開URLをコピー</button>
                   <button onMouseDown={e=>e.preventDefault()} onClick={()=>{onTogglePublic?.(node.id,false);setOpenPopover(null)}}
                     style={{padding:'8px 12px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontWeight:600,textAlign:'left'}}>🔒 公開を停止する</button>
+                  <div style={{borderTop:'1px solid var(--border)',marginTop:6,paddingTop:8}}>
+                    <div style={{fontSize:11,color:'var(--text-muted)',padding:'2px 4px',fontWeight:600}}>💬 コメント設定</div>
+                    <div style={{display:'flex',gap:4,padding:'2px 0'}}>
+                      {[['off','オフ'],['approval','承認制'],['instant','即時公開']].map(([m,label])=>{
+                        const cur = node?.comment_mode || 'off'
+                        const active = cur===m
+                        return (
+                          <button key={m} onMouseDown={e=>e.preventDefault()} onClick={()=>onUpdateCommentSettings?.(node.id,{comment_mode:m})}
+                            style={{flex:1,padding:'6px 4px',background:active?'var(--accent)':'var(--surface)',color:active?'white':'var(--text)',border:active?'none':'1px solid var(--border)',borderRadius:6,fontSize:12,cursor:'pointer',fontWeight:active?700:400}}>{label}</button>
+                        )
+                      })}
+                    </div>
+                    <div style={{fontSize:11,color:'var(--text-muted)',padding:'4px 4px 2px'}}>管理者名（返信に表示）</div>
+                    <div style={{display:'flex',gap:4}}>
+                      <input value={adminNameDraft} onChange={e=>setAdminNameDraft(e.target.value)} placeholder="管理人" maxLength={50}
+                        style={{flex:1,minWidth:0,padding:'6px 8px',fontSize:12,border:'1px solid var(--border)',borderRadius:6,background:'var(--bg)',color:'var(--text)'}} />
+                      <button onMouseDown={e=>e.preventDefault()} onClick={()=>{onUpdateCommentSettings?.(node.id,{admin_name:adminNameDraft.trim()||null});toast('管理者名を保存しました')}}
+                        style={{padding:'6px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:12,cursor:'pointer',color:'var(--text)'}}>保存</button>
+                    </div>
+                    {(node?.comment_mode||'off')!=='off' && (
+                      <button onMouseDown={e=>e.preventDefault()} onClick={()=>{onOpenCommentAdmin?.(node);setOpenPopover(null)}}
+                        style={{width:'100%',marginTop:8,padding:'8px 12px',background:'var(--accent-bg)',color:'var(--accent)',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontWeight:600,textAlign:'left'}}>💬 コメント管理を開く</button>
+                    )}
+                  </div>
                 </>) : (<>
                   <div style={{fontSize:11,color:'var(--text-muted)',padding:'2px 4px'}}>このノードをWebに公開します</div>
                   <button onMouseDown={e=>e.preventDefault()} onClick={()=>{onTogglePublic?.(node.id,true);setOpenPopover(null)}}

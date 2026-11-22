@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 // =====================================================================
  import { supabase } from '../supabaseClient';
  import RichEditor from './RichEditor';
+ import CommentSection from './CommentSection';
 
 
 export default function PublicViewer({ rootId }) {
@@ -13,6 +14,7 @@ export default function PublicViewer({ rootId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fileViewer, setFileViewer] = useState(null); // ★ 添付ファイル閲覧用
+  const [commentInfo, setCommentInfo] = useState(null); // コメント設定 { mode, admin_name }（オフや取得失敗なら欄ごと出さない）
 
   // ── レスポンシブ＆メニュー開閉状態 ──
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -67,6 +69,18 @@ export default function PublicViewer({ rootId }) {
     };
     
     if (rootId) fetchPublicTree();
+  }, [rootId]);
+
+  // コメント設定の取得（オフ＝機能の存在自体を見せない）
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_public_comment_info', { p_root_id: rootId });
+      if (cancelled) return;
+      if (error || !data || data.mode === 'off') setCommentInfo(null);
+      else setCommentInfo(data);
+    })();
+    return () => { cancelled = true; };
   }, [rootId]);
 
   // ★ 添付ファイルを開くためのイベントリスナー（音声リスナーはRichEditor側に統合しました）
@@ -350,6 +364,15 @@ export default function PublicViewer({ rootId }) {
               toolbarCollapsed={true} 
               settings={{ defaultFontSize: 15, lineHeight: 1.6, enabledToolbarItems: [] }} 
               readOnly={true} 
+            />
+          ) : null}
+          {commentInfo && activeNode ? (
+            <CommentSection
+              key={activeNode.id}
+              rootId={rootId}
+              nodeId={activeNode.id}
+              mode={commentInfo.mode}
+              adminName={commentInfo.admin_name}
             />
           ) : null}
         </div>

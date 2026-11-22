@@ -8,6 +8,7 @@ import EditorPane from './components/EditorPane'
 import SettingsModal from './components/SettingsModal'
 import ChangelogModal, { VERSION } from './components/ChangelogModal'
 import AdminModal, { isAdmin } from './components/AdminModal'
+import CommentAdminModal from './components/CommentAdminModal'
 import ReminderModal from './components/ReminderModal'
 import DriveMigrationBar from './components/DriveMigrationBar'
 import { useDriveMigration } from './hooks/useDriveMigration'
@@ -93,6 +94,8 @@ export default function App() {
   const [updateBanner, setUpdateBanner] = useState(false)
   const [previewTheme, setPreviewTheme] = useState(null)
   const [shareModal, setShareModal] = useState(null) // { title, text, url, files:[] }
+  const [commentBadges, setCommentBadges] = useState({ byNode: {}, byCategory: {}, total: 0 }) // コメント新着バッジ
+  const [commentAdminNodeId, setCommentAdminNodeId] = useState(null) // コメント管理を開いているノードID
   const [driveReconnectStatus, setDriveReconnectStatus] = useState(null) // null | 'needed' | 'connecting' （Edge Function が失敗した場合のみ 'needed' になる）
   const [loginLimitReached, setLoginLimitReached] = useState(false)
   // 初回設定でニックネームを保存した直後は、セッション側の情報が更新されるまでの間もゲートを表示しない
@@ -303,6 +306,34 @@ export default function App() {
       banner('コピーに失敗しました。以下のURLを手動でコピーしてください:\n' + url)
     }
   };
+
+  // ── コメント機能（v1.11） ──
+  const fetchCommentBadges = useCallback(async () => {
+    if (!session?.user?.id) return
+    const { data, error } = await supabase.rpc('get_comment_badges')
+    if (error || !data) return // SQL未適用の間はバッジなしで通常動作
+    const byNode = {}, byCategory = {}
+    let total = 0
+    data.forEach(r => {
+      byNode[r.node_id] = r.cnt
+      if (r.category_id) byCategory[r.category_id] = (byCategory[r.category_id] || 0) + r.cnt
+      total += r.cnt
+    })
+    setCommentBadges({ byNode, byCategory, total })
+  }, [session?.user?.id])
+
+  useEffect(() => { fetchCommentBadges() }, [fetchCommentBadges])
+
+  const handleUpdateCommentSettings = async (nodeId, patch) => {
+    const { error } = await supabase.from('nodes').update(patch).eq('id', nodeId);
+    if (error) {
+      banner('コメント設定の変更に失敗しました: ' + error.message);
+    } else if (setNodes) {
+      setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...patch } : n));
+    }
+  };
+
+  const handleOpenCommentAdmin = (node) => { if (node?.id) setCommentAdminNodeId(node.id) };
 
   const handleRestoreBackup = useCallback(async (backupNodes) => {
     if (!session?.user?.id) return
@@ -958,6 +989,10 @@ export default function App() {
             onSearchQueryChange={setSearchQuery}
             onToast={showToast}
             settings={settings}
+            commentBadgesByNode={commentBadges.byNode}
+            commentBadgesByCategory={commentBadges.byCategory}
+            commentBadgeTotal={commentBadges.total}
+            onOpenCommentAdmin={handleOpenCommentAdmin}
           />
         </div>
       )}
@@ -1057,6 +1092,8 @@ export default function App() {
         onEmptyTrash={handleEmptyTrash}
         onTogglePublic={handleTogglePublic}
         onCopyPublicUrl={handleCopyPublicUrl}
+        onUpdateCommentSettings={handleUpdateCommentSettings}
+        onOpenCommentAdmin={handleOpenCommentAdmin}
         onOpenReminder={openReminderModal}
         onNavigateAttachment={handleNavigateAttachment}
         allNodes={nodes}
@@ -1169,6 +1206,16 @@ export default function App() {
       )}
       {changelogOpen && <ChangelogModal onClose={() => setChangelogOpen(false)} />}
       {adminOpen && <AdminModal onClose={() => setAdminOpen(false)} currentUserId={session.user.id} onRunDiagnostics={runDriveDiagnostics} settings={settings} />}
+      {commentAdminNodeId && (() => {
+        const n = nodes.find(x => x.id === commentAdminNodeId)
+        return n ? (
+          <CommentAdminModal
+            node={n}
+            onClose={() => { setCommentAdminNodeId(null); fetchCommentBadges() }}
+            onChanged={fetchCommentBadges}
+          />
+        ) : null
+      })()}
       {reminderModal && <ReminderModal node={reminderModal.node} onClose={() => setReminderModal(null)} />}
       {shareModal && (
         <ShareModal

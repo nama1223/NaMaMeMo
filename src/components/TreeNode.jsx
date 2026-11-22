@@ -21,6 +21,8 @@ export default function TreeNode({
   trashNodeId,
   nodeLineHeight = 1.4,
   searchQuery = '',
+  commentBadges = null,
+  onCommentBadgeClick = null,
 }) {
   // undefined エラーを防ぐため、nodes のフォールバックと node のオプショナルチェーンを追加
   const children = (nodes || []).filter(n => n.parent_id === node?.id).sort((a, b) => a.position - b.position)
@@ -292,6 +294,15 @@ export default function TreeNode({
         </span>
         {/* ★ React のレンダリングエラーを防ぐため、三項演算子で安全に表示 */}
         {node.is_public ? <span style={{ fontSize: 12, marginLeft: 4, flexShrink: 0 }} title="公開中">🌐</span> : null}
+        {commentBadges?.[node.id] > 0 ? (
+          <button
+            title="新着コメント（タップでコメント管理）"
+            onTouchStart={e => e.stopPropagation()}
+            onPointerDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); onCommentBadgeClick?.(node) }}
+            style={{ flexShrink: 0, marginLeft: 4, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: '#dc2626', color: 'white', border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer', lineHeight: '18px', touchAction: 'manipulation' }}
+          >{commentBadges[node.id]}</button>
+        ) : null}
         {isDragging ? <span style={{ fontSize:11, opacity:0.5, flexShrink:0 }}>✥</span> : null}
       </div>
 
@@ -306,6 +317,8 @@ export default function TreeNode({
               onDragEnd={onDragEnd} onDragCancel={onDragCancel}
               depth={depth + 1}
               nodeLineHeight={nodeLineHeight}
+              commentBadges={commentBadges}
+              onCommentBadgeClick={onCommentBadgeClick}
             />
           ))}
         </div>
