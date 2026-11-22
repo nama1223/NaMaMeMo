@@ -1,16 +1,65 @@
-# React + Vite
+[日本語](README.md) | [English](README.en.md)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# NaMaMeMo ─ ツリー型クラウドメモ（招待制）─
 
-Currently, two official plugins are available:
+ツリー型（アウトライン型）のクラウドメモアプリ。
+借りているサーバーの容量の都合で50アカウントまでと設定してあり、知人向けに限定公開中です（このページの起動ボタンは無効になっています）。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+![スクリーンショット](https://nama1223.com/Store/NaMaMeMo/screen-login.jpg)
 
-## React Compiler
+## リンク
+- アプリ本体: https://nama1223.com/NaMaMeMo/（限定公開・Googleアカウントでのログインが必要）
+- 紹介ページ: https://nama1223.com/Store/NaMaMeMo/NaMaMeMoStore.html
+- Nama Studio トップ: https://nama1223.com/
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 概要
 
-## Expanding the ESLint configuration
+ツリー型（アウトライン型）のクラウドメモアプリ。
+借りているサーバーの容量の都合で50アカウントまでと設定してあり、知人向けに限定公開中です（このページの起動ボタンは無効になっています）。
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Googleアカウントでログインする仕様で、ユーザーの識別もGoogleアカウントをもとにしています。
+(ストアに登録していないアプリなのもあり、初回ログイン時の警告が強めに出て所要タップ数も多いです)
+
+### しくみ
+メモはツリー構造で整理でき、クラウドに保存されます。
+複数端末から同じデータにアクセス可能。
+添付ファイルはログインしたGoogleアカウントのGoogleドライブに保存する事でサーバーを節約しています。
+
+### 機能
+思いつくままに入れていたら異様に高機能になってしまいました。
+全部説明すると長すぎるのでざっくりと…。
+
+### 基本的…でもないテキスト編集機能
+「元に戻す/やり直し」、文字サイズ、フォント11種、見出し、太字/斜体/下線/取り消し線、文字色/蛍光ペン、左/中/右揃え、箇条書き/番号つきリスト/チェックボックス、引用、コードブロック/URLリンク/テーブル挿入/YouTube埋め込み/検索
+
+### 応用的な編集機能
+・ノードツリーを丸ごと入れ替える「カテゴリ」分け機能
+・目次
+・折りたたみ
+・添付(テキスト系/画像/音声/動画)
+・Web公開（コメント機能つき）
+・子孫ノードをまとめて表示
+
+…ほか、ちゃんと実装したか覚えていない機能がいくつか。
+
+### 設定、編集以外の機能
+・ノード一覧の表示方向や幅の調整
+・インポート／エクスポート
+・行間調整
+・自動バックアップ
+
+やっぱりやりすぎだと思う！
+作って半年くらいの現時点で自分しか使っていないせいで、細部に雑なところもあれこれと。
+たとえば複数端末で開いた時に編集が衝突すると警告が出るシステムなんですが、一台で使っていても何故かちょこちょこ警告が出ます。
+
+## 使い方
+
+詳しい画面の見方は、紹介ページの「スクリーンショット/画面説明」をご覧ください。
+
+## 動作環境
+
+Webブラウザで動作するWebアプリです（PWA対応）。
+
+## 作者
+
+Nama Studio
