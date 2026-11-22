@@ -54,10 +54,14 @@ export default function PublicViewer({ rootId }) {
           setNodes(data);
           let initialExpanded = null;
           try {
-            const saved = JSON.parse(localStorage.getItem(`namamemo-public-tree:${rootId}`) || 'null');
+            const saved = JSON.parse(localStorage.getItem(`namamemo-public-tree-open:${rootId}`) || 'null');
             if (Array.isArray(saved)) initialExpanded = saved.filter(id => data.some(n => n.id === id));
           } catch (e) { /* 保存データが読めなくても続行する */ }
-          setExpandedIds(new Set(initialExpanded !== null ? initialExpanded : [rootId]));
+          // 初期状態はフルオープン（子を持つノードを全部開く）。開閉できる事に気づかず
+          // 中身をスルーされるのを防ぐため。旧仕様（ルートだけ開く）の保存データは
+          // 保存キーを変えたので引き継がず、新しい初期状態が全員に一度は効く
+          const allParents = data.filter(n => data.some(c => c.parent_id === n.id)).map(n => n.id);
+          setExpandedIds(new Set(initialExpanded !== null ? initialExpanded : allParents));
           const root = data.find(n => n.id === rootId);
           setActiveNode(root || data[0]);
         }
@@ -103,7 +107,7 @@ export default function PublicViewer({ rootId }) {
     setExpandedIds(prev => {
       const next = new Set(prev || []);
       if (next.has(id)) next.delete(id); else next.add(id);
-      try { localStorage.setItem(`namamemo-public-tree:${rootId}`, JSON.stringify([...next])); } catch (e) { /* 保存できなくても続行する */ }
+      try { localStorage.setItem(`namamemo-public-tree-open:${rootId}`, JSON.stringify([...next])); } catch (e) { /* 保存できなくても続行する */ }
       return next;
     });
   };

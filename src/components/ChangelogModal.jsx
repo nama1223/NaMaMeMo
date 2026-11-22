@@ -1,6 +1,13 @@
-export const VERSION = '1.12'
+export const VERSION = '1.13'
 
 export const CHANGELOG = [
+  {
+    version: '1.13',
+    date: '2026-11-22',
+    items: [
+      '公開ページのツリーは、最初から全部開いた状態で表示するようにしました。折りたたまれている事に気づかず、中のメモを見落とすことがないようにするためです（自分で閉じた状態は今まで通り覚えます）',
+    ],
+  },
   {
     version: '1.12',
     date: '2026-11-22',
