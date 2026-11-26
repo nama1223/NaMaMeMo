@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { ALL_TOOLBAR_ITEMS, THEMES, THEME_ROWS, MAX_DB_MB, MAX_STORAGE_MB } from '../hooks/useSettings'
 import { supabase } from '../supabaseClient'
 import { useDialog } from './DialogProvider'
+import PrivacyPolicyModal from './PrivacyPolicyModal'
+import DeleteAccountModal from './DeleteAccountModal'
 
 const POSITION_OPTIONS = [
   { value: 'left', label: '左', icon: '▐' },
@@ -26,6 +28,8 @@ export default function SettingsModal({
   const [selectedBackup, setSelectedBackup] = useState(null)
   const [dbUsed, setDbUsed] = useState(null)
   const [storageUsed, setStorageUsed] = useState(null)
+  const [showPrivacy, setShowPrivacy] = useState(false)
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
 
   // 起動時にSupabaseから最新のニックネームを取得してlocalSettingsに反映
   useEffect(() => {
@@ -229,6 +233,17 @@ export default function SettingsModal({
                   )}
                 </div>
               </Section>
+
+              <Section title="プライバシー">
+                <button style={styles.textLink} onClick={() => setShowPrivacy(true)}>プライバシーポリシーを表示する</button>
+              </Section>
+
+              <Section title="アカウント削除">
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 10 }}>
+                  アカウントを削除すると、メモ・カテゴリ・バックアップ・公開ページのコメントなど、すべてのデータが削除され、元に戻すことはできません。
+                </p>
+                <button style={styles.dangerBtn} onClick={() => setShowDeleteAccount(true)}>アカウントを削除する…</button>
+              </Section>
             </>
           )}
 
@@ -387,6 +402,11 @@ export default function SettingsModal({
           <button style={styles.cancelBtn} onClick={handleCancel}>キャンセル</button>
           <button style={styles.saveBtn} onClick={handleSave}>保存</button>
         </div>
+
+        {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
+        {showDeleteAccount && (
+          <DeleteAccountModal settings={localSettings} userId={userId} onClose={() => setShowDeleteAccount(false)} />
+        )}
       </div>
     </div>
   )
@@ -663,4 +683,6 @@ const styles = {
   footer: { display: 'flex', gap: 8, padding: '14px 20px', borderTop: '1px solid var(--border)', justifyContent: 'flex-end' },
   cancelBtn: { padding: '8px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: 'var(--text)' },
   saveBtn: { padding: '8px 20px', background: 'var(--accent)', border: 'none', borderRadius: 8, fontSize: 14, cursor: 'pointer', color: 'white', fontWeight: 600 },
+  textLink: { background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer' },
+  dangerBtn: { padding: '8px 16px', background: 'var(--surface)', border: '1px solid #c53030', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: '#c53030', fontWeight: 600 },
 }

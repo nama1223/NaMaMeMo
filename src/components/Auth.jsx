@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { MAX_LOGIN_COUNT } from '../hooks/useSettings'
 import { useDialog } from './DialogProvider'
+import PrivacyPolicyModal from './PrivacyPolicyModal'
 
 export default function Auth({ limitReached = false }) {
   const { banner } = useDialog()
   const [loginCount, setLoginCount] = useState(null)
   const [loadingCount, setLoadingCount] = useState(true)
   const [showGuide, setShowGuide] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(false)
 
   useEffect(() => {
     const fetchCount = async () => {
@@ -102,6 +104,11 @@ export default function Auth({ limitReached = false }) {
             )}
           </div>
         )}
+
+        <div style={{ marginTop: 20 }}>
+          <button style={styles.privacyLink} onClick={() => setShowPrivacy(true)}>プライバシーポリシー</button>
+        </div>
+        {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
       </div>
     </div>
   )
@@ -130,6 +137,7 @@ const styles = {
   fullBadge: { fontSize:10, background:'#e53e3e', color:'white', padding:'2px 6px', borderRadius:10, fontWeight:700 },
   button: { display:'flex', alignItems:'center', justifyContent:'center', width:'100%', padding:'12px 24px', background:'white', border:'2px solid #e0e0e0', borderRadius:8, fontSize:16, transition:'all 0.2s', color:'#333', marginTop:4 },
   guideToggle: { background:'none', border:'none', color:'#667eea', fontSize:12, cursor:'pointer', padding:'4px 0', textDecoration:'underline' },
+  privacyLink: { background:'none', border:'none', color:'#888', fontSize:12, cursor:'pointer', padding:'4px 0', textDecoration:'underline' },
   guideBox: { marginTop:10, padding:'14px 16px', background:'#f8f7ff', borderRadius:10, border:'1px solid #d0caff', textAlign:'left' },
   guideTitle: { fontSize:13, fontWeight:700, color:'#4a4080', marginBottom:8 },
   guideList: { fontSize:12, color:'#444', lineHeight:1.8, paddingLeft:18, margin:'0 0 8px' },

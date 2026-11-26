@@ -7,6 +7,7 @@ import TreePane from './components/TreePane'
 import EditorPane from './components/EditorPane'
 import SettingsModal from './components/SettingsModal'
 import ChangelogModal, { VERSION } from './components/ChangelogModal'
+import PrivacyPolicyModal from './components/PrivacyPolicyModal'
 import AdminModal, { isAdmin } from './components/AdminModal'
 import CommentAdminModal from './components/CommentAdminModal'
 import ReminderModal from './components/ReminderModal'
@@ -87,6 +88,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [reminderModal, setReminderModal] = useState(null)
   const [toast, setToast] = useState(null)
@@ -1128,6 +1130,7 @@ export default function App() {
           <button style={styles.versionBtn} onClick={() => setChangelogOpen(true)} title="更新履歴">
             ver.{VERSION}
           </button>
+          <button style={styles.privacyLink} onClick={() => setPrivacyOpen(true)}>プライバシーポリシー</button>
         </div>
         <div style={styles.headerRight}>
           {userIsAdmin && (
@@ -1219,6 +1222,7 @@ export default function App() {
         />
       )}
       {changelogOpen && <ChangelogModal onClose={() => setChangelogOpen(false)} />}
+      {privacyOpen && <PrivacyPolicyModal onClose={() => setPrivacyOpen(false)} />}
       {adminOpen && <AdminModal onClose={() => setAdminOpen(false)} currentUserId={session.user.id} onRunDiagnostics={runDriveDiagnostics} settings={settings} />}
       {commentAdminNodeId && (() => {
         const n = nodes.find(x => x.id === commentAdminNodeId)
@@ -1293,6 +1297,7 @@ const styles = {
   headerRight: { display: 'flex', alignItems: 'center', gap: 6 },
   logo: { fontSize: 15, fontWeight: 700 },
   versionBtn: { background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 4, color: 'rgba(255,255,255,0.65)', fontSize: 10, padding: '2px 6px', cursor: 'pointer', letterSpacing: '0.02em' },
+  privacyLink: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: 11, padding: '2px 2px', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' },
   iconBtn: { background: 'none', border: 'none', color: 'var(--header-text)', width: 32, height: 32, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 },
   avatar: { width: 26, height: 26, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)' },
   logoutBtn: { padding: '3px 10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 6, color: 'var(--header-text)', cursor: 'pointer', fontSize: 12 },
